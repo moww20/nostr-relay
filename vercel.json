@@ -8,11 +8,7 @@
   ],
   "routes": [
     {
-      "src": "/",
-      "dest": "/src/main.rs"
-    },
-    {
-      "src": "/health",
+      "src": "/api/(.*)",
       "dest": "/src/main.rs"
     },
     {
@@ -20,12 +16,6 @@
       "dest": "/src/main.rs"
     }
   ],
-  "functions": {
-    "src/main.rs": {
-      "runtime": "nodejs18.x",
-      "maxDuration": 30
-    }
-  },
   "env": {
     "RUST_LOG": "info"
   },
