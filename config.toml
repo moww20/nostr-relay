@@ -30,7 +30,9 @@ relay_urls = [
     "wss://relay.snort.social",
     "wss://nostr.wine",
     "wss://eden.nostr.land",
-    "wss://relay.primal.net"
+    "wss://relay.primal.net",
+    "wss://relay.nostr.band",
+    "wss://purplepag.es"
 ]
 index_interval_seconds = 300
 max_events_per_index = 1000
