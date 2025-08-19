@@ -412,3 +412,6 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 - [NOSTR Protocol](https://github.com/nostr-protocol/nostr) for the protocol specification
 - [scsibug/nostr-rs-relay](https://github.com/scsibug/nostr-rs-relay) for inspiration
 - The Rust community for excellent tooling and libraries
+T r i g g e r   V e r c e l   r e d e p l o y   -   0 8 / 1 9 / 2 0 2 5   1 7 : 1 7 : 0 9  
+ R e d e p l o y   t r i g g e r  
+ 
