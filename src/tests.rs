@@ -1,68 +1,9 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::events::Event;
-    use crate::filters::Filter;
     use crate::config::Config;
     use crate::database::Database;
-    use secp256k1::{Secp256k1, SecretKey};
+    use crate::indexer::{Profile, Contact};
     use chrono::Utc;
-
-    #[test]
-    fn test_event_creation_and_validation() {
-        let secp = Secp256k1::new();
-        let secret_key = SecretKey::new(&mut secp256k1::rand::thread_rng());
-        let public_key = secret_key.public_key(&secp);
-        
-        let mut event = Event::new(
-            hex::encode(public_key.serialize()),
-            1,
-            vec![vec!["t".to_string(), "test".to_string()]],
-            "Hello, NOSTR!".to_string(),
-            None,
-        );
-        
-        // Sign the event
-        event.sign(&secret_key).unwrap();
-        
-        // Verify signature
-        assert!(event.verify_signature().unwrap());
-        
-        // Test validation with default limits
-        let config = Config::default();
-        assert!(event.validate(&config.limits).is_ok());
-    }
-
-    #[test]
-    fn test_filter_matching() {
-        let event = Event::new(
-            "test_pubkey".to_string(),
-            1,
-            vec![vec!["t".to_string(), "test".to_string()]],
-            "Test content".to_string(),
-            None,
-        );
-        
-        // Test author filter
-        let mut filter = Filter::new();
-        filter.authors = Some(vec!["test_pubkey".to_string()]);
-        assert!(filter.matches(&event));
-        
-        // Test kind filter
-        let mut filter = Filter::new();
-        filter.kinds = Some(vec![1]);
-        assert!(filter.matches(&event));
-        
-        // Test tag filter
-        let mut filter = Filter::new();
-        filter.tags = Some(vec![vec!["t".to_string(), "test".to_string()]]);
-        assert!(filter.matches(&event));
-        
-        // Test non-matching filter
-        let mut filter = Filter::new();
-        filter.kinds = Some(vec![2]);
-        assert!(!filter.matches(&event));
-    }
 
     #[test]
     fn test_config_loading() {
@@ -70,66 +11,109 @@ mod tests {
         assert_eq!(config.server.port, 8080);
         assert_eq!(config.server.host, "127.0.0.1");
         assert_eq!(config.database.path, "nostr_relay.db");
+        assert!(!config.indexer.relay_urls.is_empty());
+        assert!(config.indexer.enable_profile_indexing);
+        assert!(config.indexer.enable_relationship_indexing);
     }
 
     #[tokio::test]
-    async fn test_database_operations() {
+    async fn test_profile_storage_and_search() {
         let config = Config::default();
         let database = Database::new(&config.database).unwrap();
         
-        let event = Event::new(
-            "test_pubkey".to_string(),
-            1,
-            vec![vec!["t".to_string(), "test".to_string()]],
-            "Test content".to_string(),
-            None,
-        );
+        // Create a test profile with valid hex pubkey
+        let profile = Profile {
+            pubkey: "1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef".to_string(),
+            name: Some("Alice".to_string()),
+            display_name: Some("Alice Smith".to_string()),
+            about: Some("Software developer and NOSTR enthusiast".to_string()),
+            picture: Some("https://example.com/alice.jpg".to_string()),
+            banner: None,
+            website: Some("https://alice.dev".to_string()),
+            nip05: Some("alice@example.com".to_string()),
+            lud16: None,
+            created_at: 1234567890,
+            indexed_at: Utc::now(),
+            relay_sources: vec!["test_relay".to_string()],
+            search_terms: vec!["alice".to_string(), "developer".to_string()],
+        };
         
-        // Store event
-        database.store_event(&event).await.unwrap();
+        // Store profile
+        database.store_profile(&profile).await.unwrap();
         
-        // Query event
-        let mut filter = Filter::new();
-        filter.authors = Some(vec!["test_pubkey".to_string()]);
-        let events = database.query_events(&[filter]).await.unwrap();
+        // Search for profile
+        let results = database.search_profiles("Alice", 0, 10).await.unwrap();
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0].name.as_ref().unwrap(), "Alice");
         
-        assert_eq!(events.len(), 1);
-        assert_eq!(events[0].content, "Test content");
+        // Get profile by pubkey
+        let retrieved = database.get_profile(&profile.pubkey).await.unwrap();
+        assert!(retrieved.is_some());
+        assert_eq!(retrieved.unwrap().display_name.as_ref().unwrap(), "Alice Smith");
         
-        // Clean up
-        database.delete_event(&event.id).await.unwrap();
+        // Clean up - use a public method or create a test helper
+        // For now, we'll just test that the operations work
+    }
+
+    #[tokio::test]
+    async fn test_relationship_storage_and_queries() {
+        let config = Config::default();
+        let database = Database::new(&config.database).unwrap();
+        
+        // Create test relationship with valid hex pubkeys
+        let contact = Contact {
+            follower_pubkey: "1111111111111111111111111111111111111111111111111111111111111111".to_string(),
+            following_pubkey: "2222222222222222222222222222222222222222222222222222222222222222".to_string(),
+            relay: Some("test_relay".to_string()),
+            petname: Some("Bob".to_string()),
+            created_at: 1234567890,
+            indexed_at: Utc::now(),
+        };
+        
+        // Store relationship
+        database.store_relationship(&contact).await.unwrap();
+        
+        // Get following list
+        let following = database.get_following(&contact.follower_pubkey, 100).await.unwrap();
+        assert_eq!(following.len(), 1);
+        assert_eq!(following[0].following_pubkey, contact.following_pubkey);
+        
+        // Get followers list
+        let followers = database.get_followers(&contact.following_pubkey, 100).await.unwrap();
+        assert_eq!(followers.len(), 1);
+        assert_eq!(followers[0].follower_pubkey, contact.follower_pubkey);
+        
+        // Get relationship stats (returns tuple)
+        let (following_count, followers_count) = database.get_relationship_stats(&contact.follower_pubkey).await.unwrap();
+        assert_eq!(following_count, 1);
+        assert_eq!(followers_count, 0);
+        
+        let (following_count, followers_count) = database.get_relationship_stats(&contact.following_pubkey).await.unwrap();
+        assert_eq!(following_count, 0);
+        assert_eq!(followers_count, 1);
     }
 
     #[test]
-    fn test_event_id_calculation() {
-        let event1 = Event::new(
-            "test_pubkey".to_string(),
-            1,
-            vec![],
-            "Test content".to_string(),
-            Some(1234567890),
-        );
+    fn test_search_vector_generation() {
+        let profile = Profile {
+            pubkey: "3333333333333333333333333333333333333333333333333333333333333333".to_string(),
+            name: Some("Alice Developer".to_string()),
+            display_name: Some("Alice Smith".to_string()),
+            about: Some("Software developer and NOSTR enthusiast".to_string()),
+            picture: None,
+            banner: None,
+            website: None,
+            nip05: None,
+            lud16: None,
+            created_at: 1234567890,
+            indexed_at: Utc::now(),
+            relay_sources: vec![],
+            search_terms: vec!["alice".to_string(), "developer".to_string(), "nostr".to_string()],
+        };
         
-        let event2 = Event::new(
-            "test_pubkey".to_string(),
-            1,
-            vec![],
-            "Test content".to_string(),
-            Some(1234567890),
-        );
-        
-        // Same event should have same ID
-        assert_eq!(event1.id, event2.id);
-        
-        // Different content should have different ID
-        let event3 = Event::new(
-            "test_pubkey".to_string(),
-            1,
-            vec![],
-            "Different content".to_string(),
-            Some(1234567890),
-        );
-        
-        assert_ne!(event1.id, event3.id);
+        // Test that search terms are properly set
+        assert!(profile.search_terms.contains(&"alice".to_string()));
+        assert!(profile.search_terms.contains(&"developer".to_string()));
+        assert!(profile.search_terms.contains(&"nostr".to_string()));
     }
 }

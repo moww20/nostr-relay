@@ -13,7 +13,7 @@ import base64
 from typing import Dict, Any
 
 class NostrTestClient:
-    def __init__(self, relay_url: str = "ws://localhost:8080"):
+    def __init__(self, relay_url: str = "wss://relay.twatter.army"):
         self.relay_url = relay_url
         self.websocket = None
 

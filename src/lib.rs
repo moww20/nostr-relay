@@ -5,6 +5,9 @@ pub mod filters;
 pub mod server;
 pub mod websocket;
 pub mod error;
+pub mod indexer;
+pub mod api;
+pub mod relay_client;
 
 #[cfg(test)]
 mod tests;

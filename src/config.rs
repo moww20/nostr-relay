@@ -8,6 +8,7 @@ pub struct Config {
     pub database: DatabaseConfig,
     pub limits: LimitsConfig,
     pub relay: RelayConfig,
+    pub indexer: IndexerConfig,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -43,6 +44,15 @@ pub struct RelayConfig {
     pub version: String,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct IndexerConfig {
+    pub relay_urls: Vec<String>,
+    pub index_interval_seconds: u64,
+    pub max_events_per_index: usize,
+    pub enable_profile_indexing: bool,
+    pub enable_relationship_indexing: bool,
+}
+
 impl Config {
     pub fn from_file<P: AsRef<Path>>(path: P) -> crate::Result<Self> {
         let content = fs::read_to_string(path)
@@ -71,13 +81,27 @@ impl Config {
                 rate_limit_events_per_second: 100,
             },
             relay: RelayConfig {
-                name: "nostr-rs-relay".to_string(),
-                description: "A NOSTR relay implementation in Rust".to_string(),
+                name: "nostr-rs-indexer".to_string(),
+                description: "A NOSTR indexer implementation in Rust".to_string(),
                 pubkey: None,
                 contact: None,
                 supported_nips: vec![1, 11, 42],
-                software: "nostr-rs-relay".to_string(),
+                software: "nostr-rs-indexer".to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
+            },
+            indexer: IndexerConfig {
+                relay_urls: vec![
+                    "wss://relay.damus.io".to_string(),
+                    "wss://nostr.wine".to_string(),
+                    "wss://relay.snort.social".to_string(),
+                    "wss://nos.lol".to_string(),
+                    "wss://relay.nostr.band".to_string(),
+                    "wss://purplepag.es".to_string(),
+                ],
+                index_interval_seconds: 300, // 5 minutes
+                max_events_per_index: 1000,
+                enable_profile_indexing: true,
+                enable_relationship_indexing: true,
             },
         }
     }

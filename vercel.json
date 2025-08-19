@@ -1,0 +1,33 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "src/main.rs",
+      "use": "@vercel/rust"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/",
+      "dest": "/src/main.rs"
+    },
+    {
+      "src": "/health",
+      "dest": "/src/main.rs"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/src/main.rs"
+    }
+  ],
+  "functions": {
+    "src/main.rs": {
+      "runtime": "nodejs18.x",
+      "maxDuration": 30
+    }
+  },
+  "env": {
+    "RUST_LOG": "info"
+  },
+  "regions": ["iad1"]
+}

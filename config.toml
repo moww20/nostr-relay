@@ -15,10 +15,24 @@ max_subscriptions_per_connection = 10
 rate_limit_events_per_second = 100
 
 [relay]
-name = "nostr-rs-relay"
-description = "A NOSTR relay implementation in Rust"
-pubkey = null
-contact = null
+name = "nostr-rs-indexer"
+description = "A NOSTR indexer implementation in Rust"
+pubkey = ""
+contact = ""
 supported_nips = [1, 11, 42]
-software = "nostr-rs-relay"
+software = "nostr-rs-indexer"
 version = "0.1.0"
+
+[indexer]
+relay_urls = [
+    "wss://relay.damus.io",
+    "wss://nos.lol",
+    "wss://relay.snort.social",
+    "wss://nostr.wine",
+    "wss://eden.nostr.land",
+    "wss://relay.primal.net"
+]
+index_interval_seconds = 300
+max_events_per_index = 1000
+enable_profile_indexing = true
+enable_relationship_indexing = true

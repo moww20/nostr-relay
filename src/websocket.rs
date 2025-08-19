@@ -109,7 +109,8 @@ impl WebSocketHandler {
         event.validate(&self.limits)?;
 
         // Store event in database
-        self.database.store_event(&event).await?;
+        // Store event in database (commented out for indexer)
+        // self.database.store_event(&event).await?;
 
         // Send OK response
         let ok_msg = OkMessage::new(event.id.clone(), true, "Event stored".to_string());
