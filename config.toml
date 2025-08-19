@@ -1,0 +1,24 @@
+[server]
+host = "127.0.0.1"
+port = 8080
+max_connections = 1000
+
+[database]
+path = "nostr_relay.db"
+max_connections = 10
+
+[limits]
+max_event_size = 16384
+max_events_per_request = 1000
+max_filters_per_subscription = 10
+max_subscriptions_per_connection = 10
+rate_limit_events_per_second = 100
+
+[relay]
+name = "nostr-rs-relay"
+description = "A NOSTR relay implementation in Rust"
+pubkey = null
+contact = null
+supported_nips = [1, 11, 42]
+software = "nostr-rs-relay"
+version = "0.1.0"
