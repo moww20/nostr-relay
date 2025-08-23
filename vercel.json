@@ -1,7 +1,10 @@
 {
   "version": 2,
-  "installCommand": "npm install",
-  "buildCommand": "echo build-step-disabled",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
