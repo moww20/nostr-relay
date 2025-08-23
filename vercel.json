@@ -1,6 +1,7 @@
 {
   "version": 2,
   "installCommand": "npm install",
+  "buildCommand": "echo build-step-disabled",
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
