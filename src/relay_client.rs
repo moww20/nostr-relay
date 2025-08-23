@@ -1,13 +1,11 @@
 use std::sync::Arc;
-use tokio::net::TcpStream;
-use tokio_tungstenite::{WebSocketStream, MaybeTlsStream, connect_async};
+use tokio_tungstenite::connect_async;
 use tungstenite::Message;
 use futures_util::{SinkExt, StreamExt};
 use serde_json;
 use tracing::{info, error, warn, debug};
 
 use crate::events::Event;
-use crate::filters::{Filter, RequestMessage};
 use crate::indexer::Indexer;
 use crate::RelayError;
 
@@ -34,42 +32,22 @@ impl RelayClient {
         let (mut write, mut read) = ws_stream.split();
 
         // Subscribe to profile events (kind 0)
-        let profile_subscription = RequestMessage {
-            message_type: "REQ".to_string(),
-            subscription_id: "profiles".to_string(),
-            filters: vec![Filter {
-                ids: None,
-                authors: None,
-                kinds: Some(vec![0]), // Profile events
-                since: None,
-                until: None,
-                limit: Some(1000),
-                tags: None,
-            }],
-        };
-
-        let profile_msg = serde_json::to_string(&profile_subscription)
+        let profile_msg = serde_json::to_string(&serde_json::json!([
+            "REQ",
+            "profiles",
+            { "kinds": [0], "limit": 1000 }
+        ]))
             .map_err(|e| RelayError::Serialization(e))?;
         
         write.send(Message::Text(profile_msg)).await
             .map_err(|e| RelayError::Internal(format!("Failed to send profile subscription: {}", e)))?;
 
         // Subscribe to contact events (kind 3)
-        let contact_subscription = RequestMessage {
-            message_type: "REQ".to_string(),
-            subscription_id: "contacts".to_string(),
-            filters: vec![Filter {
-                ids: None,
-                authors: None,
-                kinds: Some(vec![3]), // Contact list events
-                since: None,
-                until: None,
-                limit: Some(1000),
-                tags: None,
-            }],
-        };
-
-        let contact_msg = serde_json::to_string(&contact_subscription)
+        let contact_msg = serde_json::to_string(&serde_json::json!([
+            "REQ",
+            "contacts",
+            { "kinds": [3], "limit": 1000 }
+        ]))
             .map_err(|e| RelayError::Serialization(e))?;
         
         write.send(Message::Text(contact_msg)).await
