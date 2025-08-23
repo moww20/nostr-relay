@@ -118,18 +118,23 @@ impl Indexer {
             search_terms: search_terms.clone(),
         };
 
-        // Store profile
+        // Store profile in-memory
         {
             let mut profiles = self.profiles.write().await;
-            profiles.insert(event.pubkey.clone(), profile);
+            profiles.insert(event.pubkey.clone(), profile.clone());
         }
 
-        // Update search index
+        // Update memory search index
         {
             let mut search_index = self.search_index.write().await;
-            for term in search_terms {
-                search_index.entry(term).or_insert_with(Vec::new).push(event.pubkey.clone());
+            for term in &search_terms {
+                search_index.entry(term.clone()).or_insert_with(Vec::new).push(event.pubkey.clone());
             }
+        }
+
+        // Persist to Turso if configured
+        if std::env::var("TURSO_DATABASE_URL").is_ok() {
+            crate::turso_writer::persist_profile(&profile, &search_terms).await;
         }
 
         // Update stats
@@ -164,10 +169,15 @@ impl Indexer {
                     indexed_at: Utc::now(),
                 };
 
-                // Store relationship
+                // Store relationship in-memory
                 {
                     let mut relationships = self.relationships.write().await;
-                    relationships.insert((follower_pubkey.clone(), following_pubkey), contact);
+                    relationships.insert((follower_pubkey.clone(), following_pubkey.clone()), contact.clone());
+                }
+
+                // Persist to Turso if configured
+                if std::env::var("TURSO_DATABASE_URL").is_ok() {
+                    crate::turso_writer::persist_relationship(&contact).await;
                 }
 
                 contact_count += 1;

@@ -9,6 +9,7 @@ pub mod indexer;
 pub mod api;
 pub mod relay_client;
 pub mod turso;
+pub mod turso_writer;
 
 #[cfg(test)]
 mod tests;
