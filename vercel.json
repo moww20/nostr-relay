@@ -3,6 +3,15 @@
   "builds": [
     { "src": "api/**/*.js", "use": "@vercel/node" }
   ],
+  "routes": [
+    { "src": "/api/health", "dest": "/api/health.js" },
+    { "src": "/api/search", "dest": "/api/search.js" },
+    { "src": "/api/profile/(.*)", "dest": "/api/profile/[id].js" },
+    { "src": "/api/following/(.*)", "dest": "/api/following/[id].js" },
+    { "src": "/api/followers/(.*)", "dest": "/api/followers/[id].js" },
+    { "src": "/api/stats/(.*)", "dest": "/api/stats/[id].js" },
+    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" }
+  ],
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
