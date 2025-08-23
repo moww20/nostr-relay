@@ -1,5 +1,7 @@
 {
   "version": 2,
+  "buildCommand": "npm ci",
+  "installCommand": "npm ci",
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
