@@ -1,7 +1,8 @@
-const { getClient } = require('./_db');
+const { getClient, ensureSchema } = require('./_db');
 
 module.exports = async function handler(req, res) {
   try {
+    await ensureSchema();
     const client = getClient();
     const profiles = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
     const relationships = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships', args: [] });

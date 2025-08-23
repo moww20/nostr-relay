@@ -1,7 +1,8 @@
-const { getClient } = require('./_db');
+const { getClient, ensureSchema } = require('./_db');
 
 module.exports = async function handler(req, res) {
   try {
+    await ensureSchema();
     const q = (req.query.q || '').toString();
     const page = parseInt((req.query.page || '0').toString(), 10) || 0;
     const perPage = Math.min(100, parseInt((req.query.per_page || '20').toString(), 10) || 20);

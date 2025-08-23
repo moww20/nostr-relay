@@ -1,7 +1,8 @@
-const { getClient } = require('../_db');
+const { getClient, ensureSchema } = require('../_db');
 
 module.exports = async function handler(req, res) {
   try {
+    await ensureSchema();
     const { id } = req.query;
     const limit = Math.min(1000, parseInt((req.query.limit || '100').toString(), 10) || 100);
     if (!id) return res.status(400).json({ success: false, data: null, error: 'missing id' });

@@ -1,7 +1,9 @@
 const { createClient } = require('@libsql/client');
+const { ensureSchema } = require('./_db');
 
 module.exports = async function handler(req, res) {
   try {
+    await ensureSchema();
     const url = process.env.TURSO_DATABASE_URL;
     const authToken = process.env.TURSO_AUTH_TOKEN;
     if (url && authToken) {
