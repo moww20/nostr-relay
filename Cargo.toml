@@ -33,4 +33,5 @@ url = "2.4"
 warp = "0.3"
 libsql = "0.1.8"
 libsql-client = "0.33.4"
+vercel_runtime = "1.1.0"
 

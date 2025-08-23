@@ -1,23 +1,11 @@
 {
   "version": 2,
   "builds": [
-    {
-      "src": "src/main.rs",
-      "use": "@vercel/rust"
-    }
+    { "src": "api/**/*.rs", "use": "vercel-community/rust@3.0.2" }
   ],
   "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/src/main.rs"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/src/main.rs"
-    }
+    { "src": "/api/(.*)", "dest": "/api/$1.rs" }
   ],
-  "env": {
-    "RUST_LOG": "info"
-  },
+  "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
