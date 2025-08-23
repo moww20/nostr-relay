@@ -1,0 +1,30 @@
+{
+  "name": "nostr-indexer-db",
+  "version": "1.0.0",
+  "description": "Database utilities for NOSTR indexer with Turso DB integration",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test.js",
+    "migrate": "node migrate.js",
+    "stats": "node stats.js"
+  },
+  "dependencies": {
+    "@libsql/client": "^0.33.4",
+    "bech32": "^2.0.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "keywords": [
+    "nostr",
+    "database",
+    "turso",
+    "sqlite",
+    "indexer"
+  ],
+  "author": "NOSTR Indexer Team",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

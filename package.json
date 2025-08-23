@@ -1,7 +1,35 @@
 {
   "name": "nostr-indexer-api",
+  "version": "1.0.0",
+  "description": "NOSTR Indexer API with Turso DB integration",
   "private": true,
+  "scripts": {
+    "dev": "vercel dev",
+    "build": "vercel build",
+    "deploy": "vercel --prod",
+    "db:migrate": "cd db && node migrate.js",
+    "db:stats": "cd db && node migrate.js stats",
+    "db:health": "cd db && node migrate.js health",
+    "db:reset": "cd db && node migrate.js reset"
+  },
   "dependencies": {
-    "@libsql/client": "^0.11.0"
-  }
+    "@libsql/client": "^0.33.4",
+    "bech32": "^2.0.0"
+  },
+  "devDependencies": {
+    "dotenv": "^16.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "nostr",
+    "indexer",
+    "turso",
+    "database",
+    "api",
+    "vercel"
+  ],
+  "author": "NOSTR Indexer Team",
+  "license": "MIT"
 }

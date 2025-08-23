@@ -1,58 +1,106 @@
-const { createClient } = require('@libsql/client');
+const { dbManager } = require('../db');
 
-let client;
 let ready;
 
-function getClient() {
-  if (!client) {
-    const url = process.env.TURSO_DATABASE_URL;
-    const authToken = process.env.TURSO_AUTH_TOKEN;
-    if (!url || !authToken) throw new Error('Missing Turso envs');
-    client = createClient({ url, authToken });
-  }
-  return client;
-}
-
+/**
+ * Legacy database interface for backward compatibility
+ */
 async function ensureSchema() {
   if (!ready) {
-    ready = (async () => {
-      const c = getClient();
-      await c.execute(`CREATE TABLE IF NOT EXISTS profiles (
-        pubkey TEXT PRIMARY KEY,
-        npub TEXT NOT NULL,
-        name TEXT,
-        display_name TEXT,
-        about TEXT,
-        picture TEXT,
-        banner TEXT,
-        website TEXT,
-        lud16 TEXT,
-        nip05 TEXT,
-        created_at INTEGER NOT NULL,
-        indexed_at INTEGER NOT NULL,
-        search_vector TEXT
-      )`);
-      await c.execute(`CREATE TABLE IF NOT EXISTS relationships (
-        follower_pubkey TEXT NOT NULL,
-        following_pubkey TEXT NOT NULL,
-        follower_npub TEXT NOT NULL,
-        following_npub TEXT NOT NULL,
-        relay TEXT,
-        petname TEXT,
-        created_at INTEGER NOT NULL,
-        indexed_at INTEGER NOT NULL,
-        PRIMARY KEY (follower_pubkey, following_pubkey)
-      )`);
-      await c.execute(`CREATE TABLE IF NOT EXISTS search_index (
-        term TEXT NOT NULL,
-        pubkey TEXT NOT NULL,
-        field_type TEXT NOT NULL,
-        PRIMARY KEY (term, pubkey, field_type)
-      )`);
-      return true;
-    })();
+    ready = dbManager.ensureSchema();
   }
   return ready;
 }
 
-module.exports = { getClient, ensureSchema };
+function getClient() {
+  return dbManager.getClient();
+}
+
+/**
+ * Legacy profile operations
+ */
+async function getProfile(pubkey) {
+  await ensureSchema();
+  return dbManager.profiles.getProfile(pubkey);
+}
+
+async function searchProfiles(query, page = 0, perPage = 20) {
+  await ensureSchema();
+  return dbManager.profiles.searchProfiles(query, page, perPage);
+}
+
+async function upsertProfile(profile) {
+  await ensureSchema();
+  return dbManager.profiles.upsertProfile(profile);
+}
+
+/**
+ * Legacy relationship operations
+ */
+async function getFollowing(pubkey, limit = 100) {
+  await ensureSchema();
+  return dbManager.relationships.getFollowing(pubkey, limit);
+}
+
+async function getFollowers(pubkey, limit = 100) {
+  await ensureSchema();
+  return dbManager.relationships.getFollowers(pubkey, limit);
+}
+
+async function getRelationshipStats(pubkey) {
+  await ensureSchema();
+  return dbManager.relationships.getRelationshipStats(pubkey);
+}
+
+async function upsertRelationship(relationship) {
+  await ensureSchema();
+  return dbManager.relationships.upsertRelationship(relationship);
+}
+
+/**
+ * Legacy search operations
+ */
+async function searchProfilesAdvanced(query, options = {}) {
+  await ensureSchema();
+  return dbManager.search.searchProfiles(query, options);
+}
+
+async function getSearchSuggestions(query, limit = 10) {
+  await ensureSchema();
+  return dbManager.search.getSearchSuggestions(query, limit);
+}
+
+/**
+ * Database statistics
+ */
+async function getStats() {
+  await ensureSchema();
+  return dbManager.getStats();
+}
+
+async function healthCheck() {
+  await ensureSchema();
+  return dbManager.healthCheck();
+}
+
+module.exports = { 
+  getClient, 
+  ensureSchema,
+  // Profile operations
+  getProfile,
+  searchProfiles,
+  upsertProfile,
+  // Relationship operations
+  getFollowing,
+  getFollowers,
+  getRelationshipStats,
+  upsertRelationship,
+  // Search operations
+  searchProfilesAdvanced,
+  getSearchSuggestions,
+  // Database operations
+  getStats,
+  healthCheck,
+  // Export the new dbManager for direct access
+  dbManager
+};
