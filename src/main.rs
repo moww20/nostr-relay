@@ -26,6 +26,11 @@ async fn main() -> anyhow::Result<()> {
     let config = Config::from_file(&args.config)?;
     info!("Configuration loaded from {}", args.config);
 
+    // Initialize Turso (if env vars present)
+    if let Err(e) = nostr_rs_indexer::turso::maybe_init().await {
+        tracing::warn!("Turso init failed: {}", e);
+    }
+
     // Create indexer
     let indexer = Arc::new(Indexer::new(config.indexer.relay_urls.clone()));
     info!("Created indexer for {} relays", config.indexer.relay_urls.len());

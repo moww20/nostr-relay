@@ -31,3 +31,6 @@ futures-util = "0.3"
 tokio-stream = "0.1"
 url = "2.4"
 warp = "0.3"
+libsql = "0.1.8"
+libsql-client = "0.33.4"
+
