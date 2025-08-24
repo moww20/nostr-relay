@@ -4,13 +4,11 @@
   "description": "NOSTR Indexer API with Turso DB integration",
   "private": true,
   "scripts": {
-    "dev": "vercel dev",
     "build": "echo \"No build step\"",
-    "deploy": "vercel --prod",
-    "db:migrate": "cd db && node migrate.js",
-    "db:stats": "cd db && node migrate.js stats",
-    "db:health": "cd db && node migrate.js health",
-    "db:reset": "cd db && node migrate.js reset"
+    "db:migrate": "node db/migrate.js",
+    "db:stats": "node db/migrate.js stats",
+    "db:health": "node db/migrate.js health",
+    "db:reset": "node db/migrate.js reset"
   },
   "dependencies": {
     "@libsql/client": "latest",

@@ -1,6 +1,6 @@
 # NOSTR Indexer
 
-A high-performance, production-ready NOSTR indexer that provides fast profile search and relationship mapping across multiple NOSTR relays. Built with Rust for performance and Node.js for serverless deployment.
+A Vercel-only NOSTR indexer that provides profile search and relationship mapping across multiple relays. Built as Vercel Serverless Functions with Turso DB integration and a scheduled cron job for periodic indexing.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Rust](https://img.shields.io/badge/Rust-1.70+-orange.svg)](https://www.rust-lang.org/)
@@ -14,8 +14,8 @@ A high-performance, production-ready NOSTR indexer that provides fast profile se
 - **Relationship Mapping**: Tracks following/followers relationships (kind 3)
 - **Instant Search**: Full-text search across profiles with advanced filtering
 - **Dual Format Support**: Works with both hex pubkeys and npub (bech32) formats
-- **High Performance**: Built with Rust for optimal performance
-- **Serverless Ready**: Node.js API layer for Vercel deployment
+- **Serverless**: Vercel Functions for deployment
+- **Scheduled Indexing**: Vercel Cron invokes periodic indexing
 
 ### Technical Features
 - **Turso DB Integration**: Distributed SQLite database for scalability
@@ -34,15 +34,16 @@ A high-performance, production-ready NOSTR indexer that provides fast profile se
 - [API Reference](#api-reference)
 - [Deployment](#deployment)
 - [Development](#development)
+- [Vercel Deployment](#vercel-deployment)
 - [Contributing](#contributing)
 
 ## ⚡ Quick Start
 
 ### Prerequisites
 
-- **Rust** 1.70+ ([Install via rustup](https://rustup.rs/))
 - **Node.js** 18+ ([Download here](https://nodejs.org/))
 - **Turso Database** ([Sign up here](https://turso.tech/))
+- **Vercel Account** ([Sign up here](https://vercel.com/))
 
 ### 1. Clone and Setup
 
@@ -52,9 +53,6 @@ cd nostr-indexer
 
 # Install Node.js dependencies
 npm install
-
-# Install Rust dependencies
-cargo build --release
 ```
 
 ### 2. Configure Environment
@@ -66,12 +64,11 @@ Create a `.env` file in the root directory:
 TURSO_DATABASE_URL=libsql://your-database-url.turso.io
 TURSO_AUTH_TOKEN=your-auth-token
 
-# Indexer Configuration
-RELAY_URLS=wss://relay.damus.io,wss://nos.lol,wss://relay.snort.social,wss://nostr.wine,wss://eden.nostr.land,wss://relay.primal.net
-
-# Server Configuration
-PORT=8080
-RUST_LOG=info
+# Optional Indexer Configuration overrides
+INDEXER_RELAYS=wss://relay.damus.io,wss://nos.lol,wss://relay.snort.social
+INDEXER_MAX_EVENTS=150
+INDEXER_MAX_EVENTS_PER_RELAY=75
+INDEXER_MAX_RUNTIME_MS=8000
 ```
 
 ### 3. Initialize Database
@@ -424,14 +421,15 @@ All endpoints return consistent error responses:
    - Set environment variables in Vercel dashboard:
      - `TURSO_DATABASE_URL`
      - `TURSO_AUTH_TOKEN`
-     - `RELAY_URLS`
+     - `INDEXER_RELAYS` (optional)
 
 4. **Deploy**
    ```bash
    vercel --prod
    ```
 
-### Docker Deployment
+<!-- Docker deployment removed for Vercel-only setup -->
+### Docker Deployment (Removed)
 
 1. **Build the Image**
    ```bash
@@ -448,7 +446,8 @@ All endpoints return consistent error responses:
      nostr-indexer
    ```
 
-### Systemd Service
+<!-- Systemd deployment removed for Vercel-only setup -->
+### Systemd Service (Removed)
 
 1. **Create Service File**
    ```bash
