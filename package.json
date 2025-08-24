@@ -13,7 +13,7 @@
     "db:reset": "cd db && node migrate.js reset"
   },
   "dependencies": {
-    "@libsql/client": "^0.33.4",
+    "@libsql/client": "latest",
     "bech32": "^2.0.0",
     "ws": "^8.17.0"
   },
