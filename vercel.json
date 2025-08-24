@@ -10,7 +10,14 @@
     { "src": "/api/following/(.*)", "dest": "/api/following/[id].js" },
     { "src": "/api/followers/(.*)", "dest": "/api/followers/[id].js" },
     { "src": "/api/stats/(.*)", "dest": "/api/stats/[id].js" },
-    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" }
+    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" },
+    { "src": "/api/indexer-cron", "dest": "/api/indexer-cron.js" }
+  ],
+  "functions": {
+    "api/indexer-cron.js": { "maxDuration": 60, "memory": 1024 }
+  },
+  "crons": [
+    { "path": "/api/indexer-cron", "schedule": "*/10 * * * *" }
   ],
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]

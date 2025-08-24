@@ -14,7 +14,8 @@
   },
   "dependencies": {
     "@libsql/client": "^0.33.4",
-    "bech32": "^2.0.0"
+    "bech32": "^2.0.0",
+    "ws": "^8.17.0"
   },
   "devDependencies": {
     "dotenv": "^16.0.0"
