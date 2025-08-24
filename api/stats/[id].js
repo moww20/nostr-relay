@@ -8,12 +8,18 @@ module.exports = async function handler(req, res) {
     if (!id) return res.status(400).json({ success: false, data: null, error: 'missing id' });
 
     const candidate = id.toString();
-    const hexId = candidate.startsWith('npub') ? (npubToHex(candidate) || '') : candidate;
+    const hexId = candidate.startsWith('npub') ? npubToHex(candidate) || '' : candidate;
     if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
 
     const client = getClient();
-    const following = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1', args: [hexId] });
-    const followers = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1', args: [hexId] });
+    const following = await client.execute({
+      sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1',
+      args: [hexId]
+    });
+    const followers = await client.execute({
+      sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1',
+      args: [hexId]
+    });
     const data = {
       pubkey: hexId,
       following_count: (following.rows[0] && Number(following.rows[0].c)) || 0,

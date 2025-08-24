@@ -88,10 +88,12 @@ erDiagram
 ## Environment Variables
 
 Required (serverless and CLI to Turso):
+
 - `TURSO_DATABASE_URL`: e.g. `libsql://<db-name>-<org>.turso.io`
 - `TURSO_AUTH_TOKEN`: a token with read/write access
 
 Optional (indexer behavior – api/indexer-cron.js):
+
 - `INDEXER_RELAYS`: comma-separated relay URLs; defaults are built in
 - `INDEXER_MAX_EVENTS`: default 60
 - `INDEXER_MAX_EVENTS_PER_RELAY`: default 30
@@ -100,6 +102,7 @@ Optional (indexer behavior – api/indexer-cron.js):
 - `INDEXER_TOTAL_RUNTIME_MS`: default 9000 (run budget)
 
 Optional (local dev):
+
 - `LOCAL_DB_PATH`: path for local SQLite file (defaults to `db/../nostr_indexer.db`)
 
 ## API Reference (Vercel)
@@ -165,6 +168,7 @@ Endpoint: `GET /api/indexer-cron` (invoked by Vercel Cron and can be called manu
 - Updates `indexer_state` keys: `last_indexed`, `relays_indexed_last_run`, `events_indexed_last_run`
 
 Query overrides (all optional):
+
 - `since=<unix-seconds>` – default is last run minus 60s overlap, else past hour
 - `limit=<n>` – cap total events this run (default `INDEXER_MAX_EVENTS`)
 - `per_relay=<n>` – per-relay event cap (default `INDEXER_MAX_EVENTS_PER_RELAY`)
@@ -174,6 +178,7 @@ Query overrides (all optional):
 - `runtime_ms=<n>` – per-relay runtime budget (default `INDEXER_MAX_RUNTIME_MS`)
 
 Safety & idempotency:
+
 - `INSERT OR REPLACE` on profiles and relationships
 - 60s overlap window when computing `since` to withstand cron jitter
 
@@ -218,6 +223,7 @@ npm run index:contacts -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-1
 ```
 
 Options:
+
 - `--relays=<comma-separated>` override relay list
 - `--since=<unix-seconds>` earliest event time (default: 0)
 - `--limit=<n>` total events target (best-effort)
@@ -257,19 +263,21 @@ npm run dev:api
 ```
 
 Notes:
+
 - The local stack uses an enhanced schema (adds `location`, `profile_stats`, etc.). These extras are for local UX and are not required nor used by the Vercel API.
 - `LOCAL_DB_PATH` can point to any SQLite file you want to reuse.
 
 ## Deployment (Vercel)
 
-1) Connect the repo to Vercel
-2) Add env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (and optional overrides)
-3) Deploy — Vercel will:
+1. Connect the repo to Vercel
+2. Add env vars: `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` (and optional overrides)
+3. Deploy — Vercel will:
    - Serve static `public/`
    - Deploy all `api/*.js` functions
    - Schedule the cron per `vercel.json`
 
 Vercel settings (see `vercel.json`):
+
 - `functions["api/indexer-cron.js"].maxDuration`: 60 seconds
 - `crons`: `0 2 * * *` (daily at 02:00 UTC)
 - `regions`: `["iad1"]`

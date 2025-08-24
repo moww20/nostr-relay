@@ -21,7 +21,10 @@ const CONCURRENCY = Math.max(1, parseInt(process.env.INDEXER_CONCURRENCY || '2',
 
 async function getLastIndexedTs(client) {
   try {
-    const result = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: ['last_indexed'] });
+    const result = await client.execute({
+      sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+      args: ['last_indexed']
+    });
     const v = result.rows[0] && result.rows[0].value;
     const ts = v ? parseInt(v, 10) : 0;
     return Number.isFinite(ts) ? ts : 0;
@@ -34,7 +37,10 @@ async function getLastIndexedTs(client) {
 async function getLastIndexedTsForRelay(client, relayUrl) {
   try {
     const key = `relay_last_indexed:${relayUrl}`;
-    const result = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: [key] });
+    const result = await client.execute({
+      sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+      args: [key]
+    });
     const v = result.rows[0] && result.rows[0].value;
     const ts = v ? parseInt(v, 10) : 0;
     return Number.isFinite(ts) ? ts : 0;
@@ -44,7 +50,10 @@ async function getLastIndexedTsForRelay(client, relayUrl) {
 }
 
 async function setState(client, key, value) {
-  await client.execute({ sql: 'INSERT OR REPLACE INTO indexer_state (key, value) VALUES (?1, ?2)', args: [key, String(value)] });
+  await client.execute({
+    sql: 'INSERT OR REPLACE INTO indexer_state (key, value) VALUES (?1, ?2)',
+    args: [key, String(value)]
+  });
 }
 
 // Simple advisory lock using indexer_state with TTL
@@ -52,7 +61,10 @@ async function acquireLock(client, ttlSeconds) {
   const now = Math.floor(Date.now() / 1000);
   const until = now + Math.max(5, ttlSeconds);
   try {
-    const result = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: ['lock'] });
+    const result = await client.execute({
+      sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+      args: ['lock']
+    });
     const current = result.rows[0] && parseInt(result.rows[0].value, 10);
     if (current && current > now) {
       return false;
@@ -61,7 +73,10 @@ async function acquireLock(client, ttlSeconds) {
   await setState(client, 'lock', until);
   // Re-check to mitigate races (best-effort in serverless)
   try {
-    const confirm = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: ['lock'] });
+    const confirm = await client.execute({
+      sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+      args: ['lock']
+    });
     const v = confirm.rows[0] && parseInt(confirm.rows[0].value, 10);
     return v && v >= until;
   } catch {
@@ -70,7 +85,9 @@ async function acquireLock(client, ttlSeconds) {
 }
 
 async function releaseLock(client) {
-  try { await setState(client, 'lock', 0); } catch {}
+  try {
+    await setState(client, 'lock', 0);
+  } catch {}
 }
 
 function reqMessage(subId, kinds, since, limit) {
@@ -87,7 +104,9 @@ async function indexRelay(url, sinceTs, perRelayLimit, onEvent, subsLimit, only,
     const cleanup = () => {
       if (closed) return;
       closed = true;
-      try { ws.close(); } catch {}
+      try {
+        ws.close();
+      } catch {}
       resolve(events);
     };
 
@@ -192,10 +211,15 @@ module.exports = async function handler(req, res) {
     // Advisory lock to avoid overlapping runs
     const haveLock = await acquireLock(client, Math.ceil(TOTAL_RUNTIME_MS / 1000));
     if (!haveLock) {
-      return res.status(200).json({ success: true, data: { skipped: true, reason: 'locked' }, error: null });
+      return res
+        .status(200)
+        .json({ success: true, data: { skipped: true, reason: 'locked' }, error: null });
     }
 
-    const relays = (process.env.INDEXER_RELAYS || '').split(',').map(s => s.trim()).filter(Boolean);
+    const relays = (process.env.INDEXER_RELAYS || '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const relayList = relays.length ? relays : DEFAULT_RELAYS;
 
     // request overrides via query: ?since=...&limit=...&per_relay=...&relays=...&subs_limit=...&only=profiles|contacts&runtime_ms=...
@@ -215,16 +239,24 @@ module.exports = async function handler(req, res) {
     const sinceTsMap = {};
     for (const url of relayList) {
       const relayTs = await getLastIndexedTsForRelay(client, url);
-      const baseTs = Number.isFinite(sinceParam) && sinceParam > 0
-        ? sinceParam
-        : (relayTs > 0 ? Math.max(0, relayTs - 60) : (lastStateTs > 0 ? Math.max(0, lastStateTs - 60) : sinceDefault));
+      const baseTs =
+        Number.isFinite(sinceParam) && sinceParam > 0
+          ? sinceParam
+          : relayTs > 0
+            ? Math.max(0, relayTs - 60)
+            : lastStateTs > 0
+              ? Math.max(0, lastStateTs - 60)
+              : sinceDefault;
       sinceTsMap[url] = baseTs;
     }
 
     let totalEvents = 0;
     let relaysIndexed = 0;
 
-    const maxRelays = Number.isFinite(relaysParam) && relaysParam > 0 ? relaysParam : Math.max(1, MAX_RELAYS_PER_RUN);
+    const maxRelays =
+      Number.isFinite(relaysParam) && relaysParam > 0
+        ? relaysParam
+        : Math.max(1, MAX_RELAYS_PER_RUN);
     const subsLimit = Number.isFinite(subsLimitParam) && subsLimitParam > 0 ? subsLimitParam : 10;
     const startRun = Date.now();
 
@@ -236,16 +268,33 @@ module.exports = async function handler(req, res) {
       const batch = selectedRelays.slice(i, i + concurrency);
 
       // Respect remaining event budget across the batch
-      const remainingBeforeBatch = Number.isFinite(limitParam) && limitParam > 0 ? Math.max(0, limitParam - totalEvents) : MAX_EVENTS_TOTAL - totalEvents;
+      const remainingBeforeBatch =
+        Number.isFinite(limitParam) && limitParam > 0
+          ? Math.max(0, limitParam - totalEvents)
+          : MAX_EVENTS_TOTAL - totalEvents;
       if (remainingBeforeBatch <= 0) break;
 
       const promises = batch.map(async (url) => {
-        const remaining = Number.isFinite(limitParam) && limitParam > 0
-          ? Math.max(0, limitParam - totalEvents)
-          : Math.max(0, MAX_EVENTS_TOTAL - totalEvents);
+        const remaining =
+          Number.isFinite(limitParam) && limitParam > 0
+            ? Math.max(0, limitParam - totalEvents)
+            : Math.max(0, MAX_EVENTS_TOTAL - totalEvents);
         if (remaining <= 0) return { url, count: 0 };
-        const perRelay = Math.min((Number.isFinite(perRelayParam) && perRelayParam > 0 ? perRelayParam : MAX_EVENTS_PER_RELAY), remaining);
-        const count = await indexRelay(url, sinceTsMap[url], perRelay, handleEvent, subsLimit, onlyParam || null, runtimeMsParam);
+        const perRelay = Math.min(
+          Number.isFinite(perRelayParam) && perRelayParam > 0
+            ? perRelayParam
+            : MAX_EVENTS_PER_RELAY,
+          remaining
+        );
+        const count = await indexRelay(
+          url,
+          sinceTsMap[url],
+          perRelay,
+          handleEvent,
+          subsLimit,
+          onlyParam || null,
+          runtimeMsParam
+        );
         if (count > 0) {
           // Mark relay last indexed now to advance window; conservative but effective
           const nowTs = Math.floor(Date.now() / 1000);
@@ -268,7 +317,13 @@ module.exports = async function handler(req, res) {
 
     await releaseLock(client);
 
-    res.status(200).json({ success: true, data: { relays_indexed: relaysIndexed, events_indexed: totalEvents, last_indexed: nowTs }, error: null });
+    res
+      .status(200)
+      .json({
+        success: true,
+        data: { relays_indexed: relaysIndexed, events_indexed: totalEvents, last_indexed: nowTs },
+        error: null
+      });
   } catch (e) {
     try {
       const client = getClient();

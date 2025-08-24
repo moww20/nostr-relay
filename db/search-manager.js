@@ -11,7 +11,7 @@ class SearchManager {
    */
   async searchProfiles(query, options = {}) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const {
         page = 0,
@@ -23,7 +23,7 @@ class SearchManager {
 
       const offset = page * perPage;
       const searchTerms = this.tokenizeQuery(query);
-      
+
       // Build base query
       let sql = `
         SELECT DISTINCT p.pubkey, p.npub, p.name, p.display_name, p.about, 
@@ -40,7 +40,7 @@ class SearchManager {
       if (searchTerms.length > 0) {
         sql += ' AND (';
         const searchConditions = [];
-        
+
         for (const term of searchTerms) {
           searchConditions.push(`
             p.name LIKE ? OR 
@@ -51,7 +51,7 @@ class SearchManager {
           const likeTerm = `%${term}%`;
           args.push(likeTerm, likeTerm, likeTerm, likeTerm);
         }
-        
+
         sql += searchConditions.join(' OR ') + ')';
       }
 
@@ -59,20 +59,20 @@ class SearchManager {
       if (filters.hasPicture) {
         sql += ' AND p.picture IS NOT NULL';
       }
-      
+
       if (filters.hasBanner) {
         sql += ' AND p.banner IS NOT NULL';
       }
-      
+
       if (filters.hasNip05) {
         sql += ' AND p.nip05 IS NOT NULL';
       }
-      
+
       if (filters.minCreatedAt) {
         sql += ' AND p.created_at >= ?';
         args.push(filters.minCreatedAt);
       }
-      
+
       if (filters.maxCreatedAt) {
         sql += ' AND p.created_at <= ?';
         args.push(filters.maxCreatedAt);
@@ -82,8 +82,10 @@ class SearchManager {
       const validSortFields = ['created_at', 'indexed_at', 'name', 'display_name'];
       const sortField = validSortFields.includes(sortBy) ? sortBy : 'created_at';
       const validSortOrders = ['ASC', 'DESC'];
-      const order = validSortOrders.includes(sortOrder.toUpperCase()) ? sortOrder.toUpperCase() : 'DESC';
-      
+      const order = validSortOrders.includes(sortOrder.toUpperCase())
+        ? sortOrder.toUpperCase()
+        : 'DESC';
+
       sql += ` ORDER BY p.${sortField} ${order} LIMIT ? OFFSET ?`;
       args.push(perPage, offset);
 
@@ -101,11 +103,11 @@ class SearchManager {
       `;
 
       const countArgs = [];
-      
+
       if (searchTerms.length > 0) {
         countSql += ' AND (';
         const searchConditions = [];
-        
+
         for (const term of searchTerms) {
           searchConditions.push(`
             p.name LIKE ? OR 
@@ -116,7 +118,7 @@ class SearchManager {
           const likeTerm = `%${term}%`;
           countArgs.push(likeTerm, likeTerm, likeTerm, likeTerm);
         }
-        
+
         countSql += searchConditions.join(' OR ') + ')';
       }
 
@@ -124,20 +126,20 @@ class SearchManager {
       if (filters.hasPicture) {
         countSql += ' AND p.picture IS NOT NULL';
       }
-      
+
       if (filters.hasBanner) {
         countSql += ' AND p.banner IS NOT NULL';
       }
-      
+
       if (filters.hasNip05) {
         countSql += ' AND p.nip05 IS NOT NULL';
       }
-      
+
       if (filters.minCreatedAt) {
         countSql += ' AND p.created_at >= ?';
         countArgs.push(filters.minCreatedAt);
       }
-      
+
       if (filters.maxCreatedAt) {
         countSql += ' AND p.created_at <= ?';
         countArgs.push(filters.maxCreatedAt);
@@ -148,7 +150,7 @@ class SearchManager {
         args: countArgs
       });
 
-      const profiles = result.rows.map(row => ({
+      const profiles = result.rows.map((row) => ({
         pubkey: row.pubkey,
         npub: row.npub,
         name: row.name,
@@ -181,10 +183,10 @@ class SearchManager {
    */
   async getSearchSuggestions(query, limit = 10) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const searchTerms = this.tokenizeQuery(query);
-      
+
       if (searchTerms.length === 0) {
         return [];
       }
@@ -199,23 +201,25 @@ class SearchManager {
       `;
 
       const suggestions = [];
-      
+
       for (const term of searchTerms) {
         const result = await client.execute({
           sql,
           args: [`${term}%`, limit]
         });
 
-        suggestions.push(...result.rows.map(row => ({
-          term: row.term,
-          count: row.count
-        })));
+        suggestions.push(
+          ...result.rows.map((row) => ({
+            term: row.term,
+            count: row.count
+          }))
+        );
       }
 
       // Remove duplicates and sort by count
       const uniqueSuggestions = suggestions
-        .filter((suggestion, index, self) => 
-          index === self.findIndex(s => s.term === suggestion.term)
+        .filter(
+          (suggestion, index, self) => index === self.findIndex((s) => s.term === suggestion.term)
         )
         .sort((a, b) => b.count - a.count)
         .slice(0, limit);
@@ -232,7 +236,7 @@ class SearchManager {
    */
   async getPopularSearchTerms(limit = 20) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const result = await client.execute({
         sql: `
@@ -245,7 +249,7 @@ class SearchManager {
         args: [limit]
       });
 
-      return result.rows.map(row => ({
+      return result.rows.map((row) => ({
         term: row.term,
         count: row.count
       }));
@@ -260,10 +264,16 @@ class SearchManager {
    */
   async getSearchStats() {
     const client = this.dbManager.getClient();
-    
+
     try {
-      const totalTermsRes = await client.execute({ sql: 'SELECT COUNT(DISTINCT term) AS c FROM search_index', args: [] });
-      const totalEntriesRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM search_index', args: [] });
+      const totalTermsRes = await client.execute({
+        sql: 'SELECT COUNT(DISTINCT term) AS c FROM search_index',
+        args: []
+      });
+      const totalEntriesRes = await client.execute({
+        sql: 'SELECT COUNT(*) AS c FROM search_index',
+        args: []
+      });
       const avgTermsRes = await client.execute({
         sql: `
           SELECT AVG(term_count) AS avg_terms
@@ -299,7 +309,7 @@ class SearchManager {
       .toLowerCase()
       .trim()
       .split(/\s+/)
-      .filter(term => term.length >= 2)
+      .filter((term) => term.length >= 2)
       .slice(0, 10); // Limit to 10 terms
   }
 
@@ -308,7 +318,7 @@ class SearchManager {
    */
   async buildSearchIndex(pubkey, profile) {
     const client = this.dbManager.getClient();
-    
+
     try {
       // Remove existing search terms
       await client.execute({
@@ -317,11 +327,9 @@ class SearchManager {
       });
 
       // Extract search terms from profile
-      const searchText = [
-        profile.name || '',
-        profile.display_name || '',
-        profile.about || ''
-      ].join(' ').toLowerCase();
+      const searchText = [profile.name || '', profile.display_name || '', profile.about || '']
+        .join(' ')
+        .toLowerCase();
 
       const terms = this.tokenizeQuery(searchText);
 
@@ -345,7 +353,7 @@ class SearchManager {
    */
   async cleanupSearchIndex() {
     const client = this.dbManager.getClient();
-    
+
     try {
       const result = await client.execute(`
         DELETE FROM search_index 

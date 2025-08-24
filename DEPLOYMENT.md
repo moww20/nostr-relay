@@ -90,7 +90,7 @@ services:
   nostr-relay:
     build: .
     ports:
-      - "8080:8080"
+      - '8080:8080'
     volumes:
       - nostr-data:/var/lib/nostr-relay
     restart: unless-stopped
@@ -227,10 +227,11 @@ curl http://localhost:8080/health
 ```
 
 Expected response:
+
 ```json
 {
-    "status": "healthy",
-    "timestamp": 1234567890
+  "status": "healthy",
+  "timestamp": 1234567890
 }
 ```
 

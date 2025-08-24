@@ -9,7 +9,7 @@ module.exports = async function handler(req, res) {
     if (!id) return res.status(400).json({ success: false, data: null, error: 'missing id' });
 
     const candidate = id.toString();
-    const hexId = candidate.startsWith('npub') ? (npubToHex(candidate) || '') : candidate;
+    const hexId = candidate.startsWith('npub') ? npubToHex(candidate) || '' : candidate;
     if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
 
     const client = getClient();
@@ -18,7 +18,7 @@ module.exports = async function handler(req, res) {
       args: [hexId, limit]
     });
 
-    const list = rows.rows.map(r => ({
+    const list = rows.rows.map((r) => ({
       follower_pubkey: r.follower_pubkey,
       following_pubkey: r.following_pubkey,
       relay: r.relay || null,
