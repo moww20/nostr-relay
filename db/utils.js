@@ -21,7 +21,7 @@ function hexToNpub(hexPubkey) {
     
     const bytes = Buffer.from(cleanHex, 'hex');
     const words = bech32.toWords(bytes);
-    const npub = bech32.encode('npub', words, bech32.encodings.BECH32);
+    const npub = bech32.encode('npub', words);
     
     return npub || '';
   } catch (error) {
@@ -39,7 +39,7 @@ function npubToHex(npub) {
       return '';
     }
     
-    const decoded = bech32.decode(npub, bech32.encodings.BECH32);
+    const decoded = bech32.decode(npub);
     if (!decoded || decoded.prefix !== 'npub') {
       console.warn('Invalid npub format:', npub);
       return '';
@@ -65,7 +65,7 @@ function isValidPubkey(pubkey) {
   
   if (pubkey.startsWith('npub')) {
     try {
-      const decoded = bech32.decode(pubkey, bech32.encodings.BECH32);
+      const decoded = bech32.decode(pubkey);
       return decoded && decoded.prefix === 'npub' && decoded.words.length === 32;
     } catch {
       return false;
