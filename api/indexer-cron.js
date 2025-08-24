@@ -12,9 +12,9 @@ const DEFAULT_RELAYS = [
   'wss://purplepag.es'
 ];
 
-const MAX_EVENTS_TOTAL = parseInt(process.env.INDEXER_MAX_EVENTS || '500', 10);
-const MAX_EVENTS_PER_RELAY = parseInt(process.env.INDEXER_MAX_EVENTS_PER_RELAY || '250', 10);
-const MAX_RUNTIME_MS = parseInt(process.env.INDEXER_MAX_RUNTIME_MS || '25000', 10); // keep short for serverless
+const MAX_EVENTS_TOTAL = parseInt(process.env.INDEXER_MAX_EVENTS || '150', 10);
+const MAX_EVENTS_PER_RELAY = parseInt(process.env.INDEXER_MAX_EVENTS_PER_RELAY || '75', 10);
+const MAX_RUNTIME_MS = parseInt(process.env.INDEXER_MAX_RUNTIME_MS || '8000', 10); // hobby-friendly
 
 async function getLastIndexedTs(client) {
   try {
