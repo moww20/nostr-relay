@@ -13,7 +13,7 @@ class EnhancedProfileManager {
    */
   async upsertProfile(profile) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const npub = hexToNpub(profile.pubkey);
@@ -26,7 +26,7 @@ class EnhancedProfileManager {
             website, lud16, nip05, location, created_at, indexed_at, search_vector
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        
+
         const args = [
           profile.pubkey,
           npub,
@@ -44,17 +44,21 @@ class EnhancedProfileManager {
           searchVector
         ];
 
-        client.run(sql, args, function(err) {
-          if (err) {
-            console.error('Failed to upsert profile:', err);
-            reject(err);
-          } else {
-            // Update search index
-            this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile))
-              .then(() => resolve(true))
-              .catch(reject);
-          }
-        }.bind(this));
+        client.run(
+          sql,
+          args,
+          function (err) {
+            if (err) {
+              console.error('Failed to upsert profile:', err);
+              reject(err);
+            } else {
+              // Update search index
+              this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile))
+                .then(() => resolve(true))
+                .catch(reject);
+            }
+          }.bind(this)
+        );
       } catch (error) {
         console.error('Failed to upsert profile:', error);
         reject(error);
@@ -67,11 +71,11 @@ class EnhancedProfileManager {
    */
   async getCompleteProfile(pubkey) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const hexPubkey = pubkey.startsWith('npub') ? npubToHex(pubkey) : pubkey;
-        
+
         // Get profile data
         const profileSql = `
           SELECT pubkey, npub, name, display_name, about, picture, banner, 
@@ -88,50 +92,53 @@ class EnhancedProfileManager {
             resolve(null);
           } else {
             // Get profile stats
-            client.get('SELECT followers_count, following_count, last_updated FROM profile_stats WHERE pubkey = ?', 
-              [profileRow.pubkey], (err, statsRow) => {
-              if (err) {
-                console.error('Failed to get profile stats:', err);
-                // Continue without stats
-                resolve({
-                  pubkey: profileRow.pubkey,
-                  npub: profileRow.npub,
-                  name: profileRow.name,
-                  display_name: profileRow.display_name,
-                  about: profileRow.about,
-                  picture: profileRow.picture,
-                  banner: profileRow.banner,
-                  website: profileRow.website,
-                  lud16: profileRow.lud16,
-                  nip05: profileRow.nip05,
-                  location: profileRow.location,
-                  created_at: profileRow.created_at,
-                  indexed_at: profileRow.indexed_at,
-                  followers_count: 0,
-                  following_count: 0,
-                  last_updated: null
-                });
-              } else {
-                resolve({
-                  pubkey: profileRow.pubkey,
-                  npub: profileRow.npub,
-                  name: profileRow.name,
-                  display_name: profileRow.display_name,
-                  about: profileRow.about,
-                  picture: profileRow.picture,
-                  banner: profileRow.banner,
-                  website: profileRow.website,
-                  lud16: profileRow.lud16,
-                  nip05: profileRow.nip05,
-                  location: profileRow.location,
-                  created_at: profileRow.created_at,
-                  indexed_at: profileRow.indexed_at,
-                  followers_count: statsRow ? statsRow.followers_count : 0,
-                  following_count: statsRow ? statsRow.following_count : 0,
-                  last_updated: statsRow ? statsRow.last_updated : null
-                });
+            client.get(
+              'SELECT followers_count, following_count, last_updated FROM profile_stats WHERE pubkey = ?',
+              [profileRow.pubkey],
+              (err, statsRow) => {
+                if (err) {
+                  console.error('Failed to get profile stats:', err);
+                  // Continue without stats
+                  resolve({
+                    pubkey: profileRow.pubkey,
+                    npub: profileRow.npub,
+                    name: profileRow.name,
+                    display_name: profileRow.display_name,
+                    about: profileRow.about,
+                    picture: profileRow.picture,
+                    banner: profileRow.banner,
+                    website: profileRow.website,
+                    lud16: profileRow.lud16,
+                    nip05: profileRow.nip05,
+                    location: profileRow.location,
+                    created_at: profileRow.created_at,
+                    indexed_at: profileRow.indexed_at,
+                    followers_count: 0,
+                    following_count: 0,
+                    last_updated: null
+                  });
+                } else {
+                  resolve({
+                    pubkey: profileRow.pubkey,
+                    npub: profileRow.npub,
+                    name: profileRow.name,
+                    display_name: profileRow.display_name,
+                    about: profileRow.about,
+                    picture: profileRow.picture,
+                    banner: profileRow.banner,
+                    website: profileRow.website,
+                    lud16: profileRow.lud16,
+                    nip05: profileRow.nip05,
+                    location: profileRow.location,
+                    created_at: profileRow.created_at,
+                    indexed_at: profileRow.indexed_at,
+                    followers_count: statsRow ? statsRow.followers_count : 0,
+                    following_count: statsRow ? statsRow.following_count : 0,
+                    last_updated: statsRow ? statsRow.last_updated : null
+                  });
+                }
               }
-            });
+            );
           }
         });
       } catch (error) {
@@ -146,12 +153,12 @@ class EnhancedProfileManager {
    */
   async searchProfiles(query, page = 1, perPage = 20) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const offset = (page - 1) * perPage;
         const searchTerm = `%${query}%`;
-        
+
         const sql = `
           SELECT p.pubkey, p.npub, p.name, p.display_name, p.about, p.picture, p.banner, 
                  p.website, p.lud16, p.nip05, p.location, p.created_at, p.indexed_at,
@@ -171,7 +178,7 @@ class EnhancedProfileManager {
             console.error('Failed to search profiles:', err);
             reject(err);
           } else {
-            const profiles = rows.map(row => ({
+            const profiles = rows.map((row) => ({
               pubkey: row.pubkey,
               npub: row.npub,
               name: row.name,
@@ -203,7 +210,7 @@ class EnhancedProfileManager {
    */
   async getTrendingProfiles(limit = 20) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const sql = `
@@ -223,7 +230,7 @@ class EnhancedProfileManager {
             console.error('Failed to get trending profiles:', err);
             reject(err);
           } else {
-            const profiles = rows.map(row => ({
+            const profiles = rows.map((row) => ({
               pubkey: row.pubkey,
               npub: row.npub,
               name: row.name,
@@ -256,11 +263,17 @@ class EnhancedProfileManager {
   buildSearchVector(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string') terms.push(profile.display_name.toLowerCase());
+    if (profile.display_name && typeof profile.display_name === 'string') {
+      terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
-    if (profile.location && typeof profile.location === 'string') terms.push(profile.location.toLowerCase());
-    if (profile.website && typeof profile.website === 'string') terms.push(profile.website.toLowerCase());
+    if (profile.location && typeof profile.location === 'string') {
+      terms.push(profile.location.toLowerCase());
+    }
+    if (profile.website && typeof profile.website === 'string') {
+      terms.push(profile.website.toLowerCase());
+    }
     return terms.join(' ');
   }
 
@@ -270,11 +283,17 @@ class EnhancedProfileManager {
   extractSearchTerms(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string') terms.push(profile.display_name.toLowerCase());
+    if (profile.display_name && typeof profile.display_name === 'string') {
+      terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
-    if (profile.location && typeof profile.location === 'string') terms.push(profile.location.toLowerCase());
-    if (profile.website && typeof profile.website === 'string') terms.push(profile.website.toLowerCase());
+    if (profile.location && typeof profile.location === 'string') {
+      terms.push(profile.location.toLowerCase());
+    }
+    if (profile.website && typeof profile.website === 'string') {
+      terms.push(profile.website.toLowerCase());
+    }
     return terms;
   }
 
@@ -283,7 +302,7 @@ class EnhancedProfileManager {
    */
   async updateSearchIndex(pubkey, terms) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         // First, remove existing search terms for this pubkey
@@ -296,7 +315,7 @@ class EnhancedProfileManager {
           // Then insert new search terms
           const insertPromises = [];
           for (const term of terms) {
-            const words = term.split(/\s+/).filter(word => word.length > 2);
+            const words = term.split(/\s+/).filter((word) => word.length > 2);
             for (const word of words) {
               insertPromises.push(
                 new Promise((resolve, reject) => {

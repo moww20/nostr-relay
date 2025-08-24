@@ -83,8 +83,8 @@ async function healthCheck() {
   return dbManager.healthCheck();
 }
 
-module.exports = { 
-  getClient, 
+module.exports = {
+  getClient,
   ensureSchema,
   // Profile operations
   getProfile,

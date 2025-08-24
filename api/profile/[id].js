@@ -12,7 +12,9 @@ module.exports = async function handler(req, res) {
       args: [id]
     });
 
-    if (!rows.rows.length) return res.status(404).json({ success: false, data: null, error: 'Profile not found' });
+    if (!rows.rows.length) {
+      return res.status(404).json({ success: false, data: null, error: 'Profile not found' });
+    }
     const r = rows.rows[0];
     const profile = {
       pubkey: r.pubkey,

@@ -13,7 +13,7 @@ class LocalProfileManager {
    */
   async upsertProfile(profile) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const npub = hexToNpub(profile.pubkey);
@@ -26,7 +26,7 @@ class LocalProfileManager {
             website, lud16, nip05, created_at, indexed_at, search_vector
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `;
-        
+
         const args = [
           profile.pubkey,
           npub,
@@ -43,17 +43,21 @@ class LocalProfileManager {
           searchVector
         ];
 
-        client.run(sql, args, function(err) {
-          if (err) {
-            console.error('Failed to upsert profile:', err);
-            reject(err);
-          } else {
-            // Update search index
-            this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile))
-              .then(() => resolve(true))
-              .catch(reject);
-          }
-        }.bind(this));
+        client.run(
+          sql,
+          args,
+          function (err) {
+            if (err) {
+              console.error('Failed to upsert profile:', err);
+              reject(err);
+            } else {
+              // Update search index
+              this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile))
+                .then(() => resolve(true))
+                .catch(reject);
+            }
+          }.bind(this)
+        );
       } catch (error) {
         console.error('Failed to upsert profile:', error);
         reject(error);
@@ -66,11 +70,11 @@ class LocalProfileManager {
    */
   async getProfile(pubkey) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const hexPubkey = pubkey.startsWith('npub') ? npubToHex(pubkey) : pubkey;
-        
+
         const sql = `
           SELECT pubkey, npub, name, display_name, about, picture, banner, 
                  website, lud16, nip05, created_at, indexed_at
@@ -113,12 +117,12 @@ class LocalProfileManager {
    */
   async searchProfiles(query, page = 1, perPage = 20) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         const offset = (page - 1) * perPage;
         const searchTerm = `%${query}%`;
-        
+
         const sql = `
           SELECT pubkey, npub, name, display_name, about, picture, banner, 
                  website, lud16, nip05, created_at, indexed_at
@@ -135,7 +139,7 @@ class LocalProfileManager {
             console.error('Failed to search profiles:', err);
             reject(err);
           } else {
-            const profiles = rows.map(row => ({
+            const profiles = rows.map((row) => ({
               pubkey: row.pubkey,
               npub: row.npub,
               name: row.name,
@@ -165,7 +169,9 @@ class LocalProfileManager {
   buildSearchVector(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string') terms.push(profile.display_name.toLowerCase());
+    if (profile.display_name && typeof profile.display_name === 'string') {
+      terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
     return terms.join(' ');
@@ -177,7 +183,9 @@ class LocalProfileManager {
   extractSearchTerms(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string') terms.push(profile.display_name.toLowerCase());
+    if (profile.display_name && typeof profile.display_name === 'string') {
+      terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
     return terms;
@@ -188,7 +196,7 @@ class LocalProfileManager {
    */
   async updateSearchIndex(pubkey, terms) {
     const client = this.dbManager.getClient();
-    
+
     return new Promise((resolve, reject) => {
       try {
         // First, remove existing search terms for this pubkey
@@ -201,7 +209,7 @@ class LocalProfileManager {
           // Then insert new search terms
           const insertPromises = [];
           for (const term of terms) {
-            const words = term.split(/\s+/).filter(word => word.length > 2);
+            const words = term.split(/\s+/).filter((word) => word.length > 2);
             for (const word of words) {
               insertPromises.push(
                 new Promise((resolve, reject) => {

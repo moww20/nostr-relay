@@ -26,10 +26,10 @@ class LocalDatabaseManager {
     if (!client) {
       const dbPath = process.env.LOCAL_DB_PATH || path.join(__dirname, '..', 'nostr_indexer.db');
       client = new sqlite3.Database(dbPath);
-      
+
       // Enable foreign keys
       client.run('PRAGMA foreign_keys = ON');
-      
+
       console.log(`Using local SQLite database: ${dbPath}`);
     }
     return client;
@@ -78,7 +78,7 @@ class LocalDatabaseManager {
     try {
       const c = this.getClient();
       return new Promise((resolve, reject) => {
-        c.get('SELECT 1', (err, row) => {
+        c.get('SELECT 1', (err, _row) => {
           if (err) reject(err);
           else resolve({ success: true, message: 'Database connection healthy' });
         });
@@ -93,17 +93,17 @@ class LocalDatabaseManager {
    */
   async getStats() {
     const c = this.getClient();
-    
+
     return new Promise((resolve, reject) => {
       c.get('SELECT COUNT(*) as count FROM profiles', (err, profileRow) => {
         if (err) return reject(err);
-        
+
         c.get('SELECT COUNT(*) as count FROM relationships', (err, relationshipRow) => {
           if (err) return reject(err);
-          
+
           c.get('SELECT COUNT(*) as count FROM search_index', (err, searchRow) => {
             if (err) return reject(err);
-            
+
             resolve({
               total_profiles: profileRow.count,
               total_relationships: relationshipRow.count,

@@ -54,6 +54,7 @@ node migrate.js
 ## 📊 Database Schema
 
 ### Profiles Table
+
 ```sql
 CREATE TABLE profiles (
   pubkey TEXT PRIMARY KEY,           -- Hex format public key
@@ -73,6 +74,7 @@ CREATE TABLE profiles (
 ```
 
 ### Relationships Table
+
 ```sql
 CREATE TABLE relationships (
   follower_pubkey TEXT NOT NULL,     -- Hex format follower pubkey
@@ -88,6 +90,7 @@ CREATE TABLE relationships (
 ```
 
 ### Search Index Table
+
 ```sql
 CREATE TABLE search_index (
   term TEXT NOT NULL,                -- Search term
@@ -132,7 +135,9 @@ const profile = {
 await dbManager.profiles.upsertProfile(profile);
 
 // Get profile by pubkey (hex or npub)
-const profile = await dbManager.profiles.getProfile('02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5');
+const profile = await dbManager.profiles.getProfile(
+  '02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5'
+);
 const profile2 = await dbManager.profiles.getProfile('npub1alice...');
 
 // Search profiles
@@ -152,13 +157,21 @@ const relationship = {
 await dbManager.relationships.upsertRelationship(relationship);
 
 // Get following list
-const following = await dbManager.relationships.getFollowing('02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5', 100);
+const following = await dbManager.relationships.getFollowing(
+  '02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5',
+  100
+);
 
 // Get followers list
-const followers = await dbManager.relationships.getFollowers('02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5', 100);
+const followers = await dbManager.relationships.getFollowers(
+  '02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5',
+  100
+);
 
 // Get relationship stats
-const stats = await dbManager.relationships.getRelationshipStats('02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5');
+const stats = await dbManager.relationships.getRelationshipStats(
+  '02f00fdee05e934563f15b2c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5c8c5'
+);
 ```
 
 ### Search Operations
@@ -187,6 +200,7 @@ const popularTerms = await dbManager.search.getPopularSearchTerms(20);
 ## 🚀 Migration Commands
 
 ### Run Migrations
+
 ```bash
 node migrate.js
 # or
@@ -194,16 +208,19 @@ node migrate.js migrate
 ```
 
 ### Show Statistics
+
 ```bash
 node migrate.js stats
 ```
 
 ### Health Check
+
 ```bash
 node migrate.js health
 ```
 
 ### Reset Database (⚠️ Dangerous)
+
 ```bash
 node migrate.js reset
 ```
@@ -245,7 +262,7 @@ const { dbManager } = require('../db');
 export default async function handler(req, res) {
   try {
     await dbManager.init();
-    
+
     if (req.method === 'GET') {
       const profiles = await dbManager.profiles.searchProfiles(req.query.q, 0, 20);
       res.json({ success: true, data: profiles });
@@ -259,6 +276,7 @@ export default async function handler(req, res) {
 ## 🔧 Development
 
 ### Running Tests
+
 ```bash
 npm test
 ```

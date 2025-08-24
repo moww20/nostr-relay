@@ -5,15 +5,27 @@ module.exports = async function handler(req, res) {
     await ensureSchema();
     const client = getClient();
     const profiles = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
-    const relationships = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships', args: [] });
-    const searchIndex = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM search_index', args: [] });
+    const relationships = await client.execute({
+      sql: 'SELECT COUNT(*) AS c FROM relationships',
+      args: []
+    });
+    const searchIndex = await client.execute({
+      sql: 'SELECT COUNT(*) AS c FROM search_index',
+      args: []
+    });
 
     // read indexer_state
     let lastIndexed = null;
     let relaysIndexed = 0;
     try {
-      const last = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: ['last_indexed'] });
-      const rels = await client.execute({ sql: 'SELECT value FROM indexer_state WHERE key = ?1', args: ['relays_indexed_last_run'] });
+      const last = await client.execute({
+        sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+        args: ['last_indexed']
+      });
+      const rels = await client.execute({
+        sql: 'SELECT value FROM indexer_state WHERE key = ?1',
+        args: ['relays_indexed_last_run']
+      });
       lastIndexed = (last.rows[0] && Number(last.rows[0].value)) || null;
       relaysIndexed = (rels.rows[0] && Number(rels.rows[0].value)) || 0;
     } catch {}

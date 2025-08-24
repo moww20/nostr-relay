@@ -25,15 +25,15 @@ class DatabaseManager {
     if (!client) {
       const url = process.env.TURSO_DATABASE_URL;
       const authToken = process.env.TURSO_AUTH_TOKEN;
-      
+
       if (!url) {
         throw new Error('TURSO_DATABASE_URL environment variable is required');
       }
-      
+
       if (!authToken) {
         throw new Error('TURSO_AUTH_TOKEN environment variable is required');
       }
-      
+
       client = createClient({ url, authToken });
     }
     return client;
@@ -86,15 +86,21 @@ class DatabaseManager {
    */
   async getStats() {
     const c = this.getClient();
-    
-    const [profileCount] = await c.execute('SELECT COUNT(*) as count FROM profiles');
-    const [relationshipCount] = await c.execute('SELECT COUNT(*) as count FROM relationships');
-    const [searchIndexCount] = await c.execute('SELECT COUNT(*) as count FROM search_index');
-    
+
+    const profiles = await c.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
+    const relationships = await c.execute({
+      sql: 'SELECT COUNT(*) AS c FROM relationships',
+      args: []
+    });
+    const searchIndex = await c.execute({
+      sql: 'SELECT COUNT(*) AS c FROM search_index',
+      args: []
+    });
+
     return {
-      total_profiles: profileCount.count,
-      total_relationships: relationshipCount.count,
-      search_index_size: searchIndexCount.count,
+      total_profiles: (profiles.rows[0] && Number(profiles.rows[0].c)) || 0,
+      total_relationships: (relationships.rows[0] && Number(relationships.rows[0].c)) || 0,
+      search_index_size: (searchIndex.rows[0] && Number(searchIndex.rows[0].c)) || 0,
       last_updated: new Date().toISOString()
     };
   }

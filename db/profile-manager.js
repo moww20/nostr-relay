@@ -13,7 +13,7 @@ class ProfileManager {
    */
   async upsertProfile(profile) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const npub = hexToNpub(profile.pubkey);
       const searchVector = this.buildSearchVector(profile);
@@ -45,7 +45,7 @@ class ProfileManager {
 
       // Update search index
       await this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile));
-      
+
       return true;
     } catch (error) {
       console.error('Failed to upsert profile:', error);
@@ -58,10 +58,10 @@ class ProfileManager {
    */
   async getProfile(pubkey) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const hexPubkey = pubkey.startsWith('npub') ? npubToHex(pubkey) : pubkey;
-      
+
       const result = await client.execute({
         sql: `
           SELECT pubkey, npub, name, display_name, about, picture, banner, 
@@ -102,7 +102,7 @@ class ProfileManager {
    */
   async searchProfiles(query, page = 0, perPage = 20) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const searchTerms = this.tokenizeQuery(query);
       const offset = page * perPage;
@@ -162,7 +162,7 @@ class ProfileManager {
         args: countArgs
       });
 
-      const profiles = result.rows.map(row => ({
+      const profiles = result.rows.map((row) => ({
         pubkey: row.pubkey,
         npub: row.npub,
         name: row.name,
@@ -194,7 +194,7 @@ class ProfileManager {
    */
   async getProfilesByNip05(nip05) {
     const client = this.dbManager.getClient();
-    
+
     try {
       const result = await client.execute({
         sql: `
@@ -207,7 +207,7 @@ class ProfileManager {
         args: [nip05]
       });
 
-      return result.rows.map(row => ({
+      return result.rows.map((row) => ({
         pubkey: row.pubkey,
         npub: row.npub,
         name: row.name,
@@ -232,7 +232,7 @@ class ProfileManager {
    */
   async deleteProfile(pubkey) {
     const client = this.dbManager.getClient();
-    
+
     try {
       await client.execute({
         sql: 'DELETE FROM profiles WHERE pubkey = ?',
@@ -257,18 +257,27 @@ class ProfileManager {
    */
   async getProfileStats() {
     const client = this.dbManager.getClient();
-    
+
     try {
-      const [totalCount] = await client.execute('SELECT COUNT(*) as count FROM profiles');
-      const [withPictures] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE picture IS NOT NULL');
-      const [withBanners] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE banner IS NOT NULL');
-      const [withNip05] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE nip05 IS NOT NULL');
+      const total = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
+      const withPictures = await client.execute({
+        sql: 'SELECT COUNT(*) AS c FROM profiles WHERE picture IS NOT NULL',
+        args: []
+      });
+      const withBanners = await client.execute({
+        sql: 'SELECT COUNT(*) AS c FROM profiles WHERE banner IS NOT NULL',
+        args: []
+      });
+      const withNip05 = await client.execute({
+        sql: 'SELECT COUNT(*) AS c FROM profiles WHERE nip05 IS NOT NULL',
+        args: []
+      });
 
       return {
-        total_profiles: totalCount.count,
-        profiles_with_pictures: withPictures.count,
-        profiles_with_banners: withBanners.count,
-        profiles_with_nip05: withNip05.count
+        total_profiles: (total.rows[0] && Number(total.rows[0].c)) || 0,
+        profiles_with_pictures: (withPictures.rows[0] && Number(withPictures.rows[0].c)) || 0,
+        profiles_with_banners: (withBanners.rows[0] && Number(withBanners.rows[0].c)) || 0,
+        profiles_with_nip05: (withNip05.rows[0] && Number(withNip05.rows[0].c)) || 0
       };
     } catch (error) {
       console.error('Failed to get profile stats:', error);
@@ -280,11 +289,9 @@ class ProfileManager {
    * Build search vector for profile
    */
   buildSearchVector(profile) {
-    return [
-      profile.name || '',
-      profile.display_name || '',
-      profile.about || ''
-    ].join(' ').toLowerCase();
+    return [profile.name || '', profile.display_name || '', profile.about || '']
+      .join(' ')
+      .toLowerCase();
   }
 
   /**
@@ -302,7 +309,7 @@ class ProfileManager {
     return query
       .toLowerCase()
       .split(/\s+/)
-      .filter(term => term.length > 2)
+      .filter((term) => term.length > 2)
       .slice(0, 10); // Limit to 10 terms
   }
 
@@ -311,7 +318,7 @@ class ProfileManager {
    */
   async updateSearchIndex(pubkey, terms) {
     const client = this.dbManager.getClient();
-    
+
     try {
       // Remove old search terms
       await client.execute({

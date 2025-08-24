@@ -13,9 +13,6 @@
   "functions": {
     "api/indexer-cron.js": { "maxDuration": 60, "memory": 1024 }
   },
-  "crons": [
-    { "path": "/api/indexer-cron", "schedule": "0 2 * * *" }
-  ],
-  "env": { "RUST_LOG": "info" },
+  "crons": [{ "path": "/api/indexer-cron", "schedule": "0 2 * * *" }],
   "regions": ["iad1"]
 }
