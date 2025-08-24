@@ -263,14 +263,17 @@ class EnhancedProfileManager {
   buildSearchVector(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string')
+    if (profile.display_name && typeof profile.display_name === 'string') {
       terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
-    if (profile.location && typeof profile.location === 'string')
+    if (profile.location && typeof profile.location === 'string') {
       terms.push(profile.location.toLowerCase());
-    if (profile.website && typeof profile.website === 'string')
+    }
+    if (profile.website && typeof profile.website === 'string') {
       terms.push(profile.website.toLowerCase());
+    }
     return terms.join(' ');
   }
 
@@ -280,14 +283,17 @@ class EnhancedProfileManager {
   extractSearchTerms(profile) {
     const terms = [];
     if (profile.name && typeof profile.name === 'string') terms.push(profile.name.toLowerCase());
-    if (profile.display_name && typeof profile.display_name === 'string')
+    if (profile.display_name && typeof profile.display_name === 'string') {
       terms.push(profile.display_name.toLowerCase());
+    }
     if (profile.about && typeof profile.about === 'string') terms.push(profile.about.toLowerCase());
     if (profile.nip05 && typeof profile.nip05 === 'string') terms.push(profile.nip05.toLowerCase());
-    if (profile.location && typeof profile.location === 'string')
+    if (profile.location && typeof profile.location === 'string') {
       terms.push(profile.location.toLowerCase());
-    if (profile.website && typeof profile.website === 'string')
+    }
+    if (profile.website && typeof profile.website === 'string') {
       terms.push(profile.website.toLowerCase());
+    }
     return terms;
   }
 

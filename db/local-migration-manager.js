@@ -138,7 +138,7 @@ class LocalMigrationManager {
     ];
 
     const createIndexPromises = indexes.map((index) => {
-      return new Promise((resolve, reject) => {
+      return new Promise((resolve) => {
         client.run(index, (err) => {
           if (err) {
             console.warn(`Failed to create index: ${index}`, err.message);

@@ -78,7 +78,7 @@ class LocalDatabaseManager {
     try {
       const c = this.getClient();
       return new Promise((resolve, reject) => {
-        c.get('SELECT 1', (err, row) => {
+        c.get('SELECT 1', (err, _row) => {
           if (err) reject(err);
           else resolve({ success: true, message: 'Database connection healthy' });
         });

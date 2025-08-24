@@ -150,12 +150,8 @@ async function onEventFactory() {
     showHelp();
     process.exit(0);
   }
-  const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(','))
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(',')).split(',').map(s => s.trim()).filter(Boolean);
   const since = Number(opts.since || opts.sinceSeconds || 0);
-  const limit = Number(opts.limit || 1000000);
   const perRelay = Number(opts.perRelay || opts.perRelayLimit || 100000);
   const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
   const runtimeMs = Number(opts.runtimeMs || opts.runtimeMsPerRelay || 300000);

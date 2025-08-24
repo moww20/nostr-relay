@@ -159,12 +159,8 @@ async function onEventFactory() {
 
 (async () => {
   const opts = parseArgs();
-  const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(','))
-    .split(',')
-    .map((s) => s.trim())
-    .filter(Boolean);
+  const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(',')).split(',').map(s => s.trim()).filter(Boolean);
   const since = Number(opts.since || 0); // default to beginning of time
-  const limit = Number(opts.limit || 1000000); // default to 1 million events
   const perRelay = Number(opts.perRelay || 100000); // default to 100k per relay
   const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
   const runtimeMs = Number(opts.runtimeMs || 300000); // default to 5 minutes per relay

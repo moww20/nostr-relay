@@ -11,14 +11,13 @@ module.exports = async function handler(req, res) {
       .split(/\s+/)
       .map((s) => s.trim().toLowerCase())
       .filter((w) => w.length > 2);
-    if (!terms.length)
-      return res
-        .status(200)
-        .json({
-          success: true,
-          data: { profiles: [], total_count: 0, page, per_page: perPage },
-          error: null
-        });
+    if (!terms.length) {
+      return res.status(200).json({
+        success: true,
+        data: { profiles: [], total_count: 0, page, per_page: perPage },
+        error: null
+      });
+    }
 
     const where = terms.map(() => '(si.term LIKE ? OR p.search_vector LIKE ?)').join(' OR ');
     const whereArgs = terms.flatMap((t) => [`%${t}%`, `%${t}%`]);

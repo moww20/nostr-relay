@@ -187,8 +187,9 @@ app.get('/api/search/field', async (req, res) => {
 
     const profiles = await new Promise((resolve, reject) => {
       client.all(sql, [searchTerm, parseInt(per_page), offset], (err, rows) => {
-        if (err) reject(err);
-        else
+        if (err) {
+          reject(err);
+        } else {
           resolve(
             rows.map((row) => ({
               pubkey: row.pubkey,
@@ -208,6 +209,7 @@ app.get('/api/search/field', async (req, res) => {
               following_count: row.following_count
             }))
           );
+        }
       });
     });
 
