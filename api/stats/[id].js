@@ -1,7 +1,11 @@
 const { getClient, ensureSchema } = require('../_db');
 const { npubToHex } = require('../../db/utils');
+const { applyCors } = require('../_cors');
 
 module.exports = async function handler(req, res) {
+  const cors = applyCors(req, res);
+  if (cors.ended) return;
+  if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
     await ensureSchema();
     const { id } = req.query;
@@ -12,14 +16,8 @@ module.exports = async function handler(req, res) {
     if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
 
     const client = getClient();
-    const following = await client.execute({
-      sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1',
-      args: [hexId]
-    });
-    const followers = await client.execute({
-      sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1',
-      args: [hexId]
-    });
+    const following = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1', args: [hexId] });
+    const followers = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1', args: [hexId] });
     const data = {
       pubkey: hexId,
       following_count: (following.rows[0] && Number(following.rows[0].c)) || 0,

@@ -1,6 +1,10 @@
 const { getClient, ensureSchema } = require('../_db');
+const { applyCors } = require('../_cors');
 
 module.exports = async function handler(req, res) {
+  const cors = applyCors(req, res);
+  if (cors.ended) return;
+  if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
     await ensureSchema();
     const { id } = req.query;

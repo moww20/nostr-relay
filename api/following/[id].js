@@ -1,20 +1,24 @@
 const { getClient, ensureSchema } = require('../_db');
 const { npubToHex } = require('../../db/utils');
+const { applyCors } = require('../_cors');
 
 module.exports = async function handler(req, res) {
+  const cors = applyCors(req, res);
+  if (cors.ended) return;
+  if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
     await ensureSchema();
     const { id } = req.query;
     const limit = Math.min(1000, parseInt((req.query.limit || '100').toString(), 10) || 100);
     if (!id) {
-    return res.status(400).json({ success: false, data: null, error: 'missing id' });
-  }
+      return res.status(400).json({ success: false, data: null, error: 'missing id' });
+    }
 
     const candidate = id.toString();
     const hexId = candidate.startsWith('npub') ? npubToHex(candidate) || '' : candidate;
     if (!hexId) {
-    return res.status(400).json({ success: false, data: null, error: 'invalid id' });
-  }
+      return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+    }
 
     const client = getClient();
     const rows = await client.execute({
