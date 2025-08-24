@@ -98,7 +98,7 @@ Safety & Idempotency
 - Uses `INSERT OR REPLACE` for profiles and relationships
 - Keeps a small overlap window (60s) to avoid data loss under schedule jitter
 
-## Local Development
+## Local Development & Backfill
 
 1) Install deps
 ```bash
@@ -178,3 +178,43 @@ package.json
 ## License
 
 MIT © Contributors
+
+### Local backfill to Turso
+
+The repo includes a simple Node CLI that connects to relays locally and writes directly to your Turso DB using the same managers as the API.
+
+Prereqs:
+- `TURSO_DATABASE_URL`, `TURSO_AUTH_TOKEN` exported in your shell
+
+Commands:
+```bash
+# general run (profiles + contacts)
+npm run index:local -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-604800))
+
+# profiles only
+npm run index:profiles -- --limit=50000 --perRelay=2500 --since=$(($(date +%s)-2592000))
+
+# contacts only
+npm run index:contacts -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-1209600))
+```
+
+Options:
+- `--relays=<comma-separated>` override relay list
+- `--since=<unix-seconds>` earliest event time (default: 24h ago)
+- `--limit=<n>` total events target (best-effort)
+- `--perRelay=<n>` cap per relay
+- `--only=profiles|contacts` restrict kinds
+- `--runtimeMs=<ms>` per-relay socket budget (default 55s)
+
+You can loop runs to reach higher totals:
+```bash
+for i in $(seq 1 20); do
+  npm run index:profiles -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-2592000))
+  sleep 3
+done
+```
+
+Verify:
+```bash
+curl -sS https://<your-domain>/api/indexer-stats | jq
+```

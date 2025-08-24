@@ -8,7 +8,10 @@
     "db:migrate": "node db/migrate.js",
     "db:stats": "node db/migrate.js stats",
     "db:health": "node db/migrate.js health",
-    "db:reset": "node db/migrate.js reset"
+    "db:reset": "node db/migrate.js reset",
+    "index:local": "node scripts/local-index.js",
+    "index:profiles": "node scripts/local-index.js --only=profiles",
+    "index:contacts": "node scripts/local-index.js --only=contacts"
   },
   "dependencies": {
     "@libsql/client": "latest",
