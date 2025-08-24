@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8" />
+	<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+	<title>Nostr Indexer API</title>
+	<style>
+		body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif; margin: 40px; color: #111; }
+		code { background: #f4f4f4; padding: 2px 4px; border-radius: 4px; }
+		.container { max-width: 720px; }
+		.hint { color: #555; }
+	</style>
+</head>
+<body>
+	<div class="container">
+		<h1>Nostr Indexer API</h1>
+		<p>This project exposes serverless endpoints and a scheduled indexer.</p>
+		<ul>
+			<li><code>/api/health</code></li>
+			<li><code>/api/indexer-stats</code></li>
+			<li><code>/api/indexer-cron</code> (invoked by Vercel Cron)</li>
+			<li><code>/api/search?q=...</code></li>
+			<li><code>/api/profile/&lt;pubkey-or-npub&gt;</code></li>
+			<li><code>/api/following/&lt;pubkey&gt;</code></li>
+			<li><code>/api/followers/&lt;pubkey&gt;</code></li>
+			<li><code>/api/stats/&lt;pubkey&gt;</code></li>
+		</ul>
+		<p class="hint">If you see this page, the deployment completed successfully.</p>
+	</div>
+</body>
+</html>

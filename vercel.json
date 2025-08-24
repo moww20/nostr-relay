@@ -1,8 +1,5 @@
 {
   "version": 2,
-  "builds": [
-    { "src": "api/**/*.js", "use": "@vercel/node" }
-  ],
   "routes": [
     { "src": "/api/health", "dest": "/api/health.js" },
     { "src": "/api/search", "dest": "/api/search.js" },
@@ -10,7 +7,14 @@
     { "src": "/api/following/(.*)", "dest": "/api/following/[id].js" },
     { "src": "/api/followers/(.*)", "dest": "/api/followers/[id].js" },
     { "src": "/api/stats/(.*)", "dest": "/api/stats/[id].js" },
-    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" }
+    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" },
+    { "src": "/api/indexer-cron", "dest": "/api/indexer-cron.js" }
+  ],
+  "functions": {
+    "api/indexer-cron.js": { "maxDuration": 10, "memory": 1024 }
+  },
+  "crons": [
+    { "path": "/api/indexer-cron", "schedule": "0 2 * * *" }
   ],
   "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]

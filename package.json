@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "dev": "vercel dev",
-    "build": "vercel build",
+    "build": "echo \"No build step\"",
     "deploy": "vercel --prod",
     "db:migrate": "cd db && node migrate.js",
     "db:stats": "cd db && node migrate.js stats",
@@ -13,8 +13,9 @@
     "db:reset": "cd db && node migrate.js reset"
   },
   "dependencies": {
-    "@libsql/client": "^0.33.4",
-    "bech32": "^2.0.0"
+    "@libsql/client": "latest",
+    "bech32": "^2.0.0",
+    "ws": "^8.17.0"
   },
   "devDependencies": {
     "dotenv": "^16.0.0"
