@@ -1,6 +1,10 @@
 const { getClient, ensureSchema } = require('./_db');
+const { applyCors } = require('./_cors');
 
 module.exports = async function handler(req, res) {
+  const cors = applyCors(req, res);
+  if (cors.ended) return;
+  if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
     await ensureSchema();
     const q = (req.query.q || '').toString();
@@ -47,13 +51,7 @@ module.exports = async function handler(req, res) {
       search_terms: []
     }));
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        data: { profiles, total_count: total, page, per_page: perPage },
-        error: null
-      });
+    res.status(200).json({ success: true, data: { profiles, total_count: total, page, per_page: perPage }, error: null });
   } catch (e) {
     res.status(500).json({ success: false, data: null, error: e?.message || 'error' });
   }
