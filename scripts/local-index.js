@@ -12,7 +12,15 @@ const DEFAULT_RELAYS = [
 	'wss://eden.nostr.land',
 	'wss://relay.primal.net',
 	'wss://relay.nostr.band',
-	'wss://purplepag.es'
+	'wss://purplepag.es',
+	'wss://relay.nostr.wine',
+	'wss://relay.nostr.band',
+	'wss://relay.nostr.info',
+	'wss://relay.nostr.com',
+	'wss://relay.nostr.net',
+	'wss://relay.nostr.org',
+	'wss://relay.nostr.dev',
+	'wss://relay.nostr.io'
 ];
 
 function parseArgs() {
@@ -44,7 +52,7 @@ async function indexRelay(url, sinceTs, perRelayLimit, only, onEvent, runtimeMs)
 		};
 
 		const stopIfNeeded = () => {
-			if (events >= perRelayLimit) cleanup();
+			// Only stop if we've been running for too long, don't limit by event count
 			if (Date.now() - start > runtimeMs) cleanup();
 		};
 
@@ -129,11 +137,11 @@ async function onEventFactory() {
 (async () => {
 	const opts = parseArgs();
 	const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(',')).split(',').map(s => s.trim()).filter(Boolean);
-	const since = Number(opts.since || Math.floor(Date.now()/1000) - 86400); // default past day
-	const limit = Number(opts.limit || 5000);
-	const perRelay = Number(opts.perRelay || 2500);
+	const since = Number(opts.since || 0); // default to beginning of time
+	const limit = Number(opts.limit || 1000000); // default to 1 million events
+	const perRelay = Number(opts.perRelay || 100000); // default to 100k per relay
 	const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
-	const runtimeMs = Number(opts.runtimeMs || 55000);
+	const runtimeMs = Number(opts.runtimeMs || 300000); // default to 5 minutes per relay
 
 	if (!process.env.TURSO_DATABASE_URL) {
 		console.error('Missing TURSO_DATABASE_URL');
@@ -143,9 +151,7 @@ async function onEventFactory() {
 	const onEvent = await onEventFactory();
 	let total = 0;
 	for (const url of relays) {
-		if (total >= limit) break;
-		const remaining = Math.max(0, limit - total);
-		const count = await indexRelay(url, since, Math.min(perRelay, remaining), only, onEvent, runtimeMs);
+		const count = await indexRelay(url, since, perRelay, only, onEvent, runtimeMs);
 		total += count;
 		console.log(`Indexed ${count} from ${url} (total=${total})`);
 	}
