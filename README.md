@@ -362,3 +362,139 @@ package.json
 ## License
 
 MIT © Contributors
+
+## Public API (Production) and Client Integration Guide
+
+Base URL (production): https://indexer.twatter.army/
+
+Response envelope (all endpoints): `{ success, data, error }`
+
+### Endpoints
+
+- Health
+  - `GET /api/health`
+  - Liveness and DB reachability
+  - Example:
+```bash
+curl -sS https://indexer.twatter.army/api/health
+```
+
+- Indexer stats
+  - `GET /api/indexer-stats`
+  - Totals and last indexer run metadata
+  - Example:
+```bash
+curl -sS https://indexer.twatter.army/api/indexer-stats
+```
+
+- Search profiles
+  - `GET /api/search?q=<query>&page=<n>&per_page=<m>`
+  - Tokenizes q (terms length > 2), `page` is 0-based, `per_page` clamped to ≤100
+  - Example:
+```bash
+curl -sS "https://indexer.twatter.army/api/search?q=jack&page=0&per_page=20"
+```
+
+- Profile by id (npub or hex)
+  - `GET /api/profile/<pubkey-or-npub>`
+  - Example:
+```bash
+curl -sS https://indexer.twatter.army/api/profile/npub1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+- Following (npub or hex)
+  - `GET /api/following/<pubkey-or-npub>?limit=100`
+  - Example:
+```bash
+curl -sS "https://indexer.twatter.army/api/following/npub1xxxxxxxx...?limit=50"
+```
+
+- Followers (npub or hex)
+  - `GET /api/followers/<pubkey-or-npub>?limit=100`
+  - Example:
+```bash
+curl -sS "https://indexer.twatter.army/api/followers/npub1xxxxxxxx...?limit=50"
+```
+
+- User stats (npub or hex)
+  - `GET /api/stats/<pubkey-or-npub>`
+  - Example:
+```bash
+curl -sS https://indexer.twatter.army/api/stats/npub1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+- Cron indexer (ops)
+  - `GET /api/indexer-cron`
+  - Optional overrides: `since, limit, per_relay, relays, subs_limit, only=profiles|contacts, runtime_ms`
+  - For scheduled operation primarily; not needed by end-user clients
+
+### What each endpoint returns
+
+- `/api/health`: `{ success: true, data: "OK" }`
+- `/api/indexer-stats`: `{ total_profiles, total_relationships, search_index_size, relays_indexed, last_indexed }`
+- `/api/search`: `{ profiles: [...], total_count, page, per_page }`
+- `/api/profile/<id>`: a single profile document (pubkey, name, display_name, about, picture, banner, website, lud16, nip05, created_at, indexed_at)
+- `/api/following/<id>`, `/api/followers/<id>`: arrays of `{ follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at }`
+- `/api/stats/<id>`: `{ pubkey, following_count, followers_count, last_contact_update }`
+
+### Client usage patterns (NOSTR apps)
+
+- Search UX
+  - Debounce text input and call `/api/search?q=...&page=0&per_page=20`
+  - Render name/display_name/avatar (`picture`), show `about` snippet
+  - Paginate via `page` increments
+  - Optional: open a short-lived relay subscription to live-refresh
+
+- Profile view
+  - Fetch `/api/profile/<npub|hex>` to render profile card
+  - Fetch `/api/stats/<npub|hex>` for counts
+  - Lazy-load `/api/followers` and `/api/following` tabs (`limit=20..50`)
+
+- People graph
+  - Use `/api/followers` and `/api/following` to populate lists
+  - Fetch `/api/profile/<pubkey>` on-demand for avatar/name when rendering list items
+
+- Caching & freshness
+  - Profiles: cache minutes to hours
+  - Relationships: short TTL (30–120s) with revalidation
+  - Show “Last updated” using `/api/indexer-stats.last_indexed`
+
+- IDs
+  - Endpoints accept `npub` or 64-hex pubkeys
+  - Normalize to hex in client state if needed
+
+### Quick code snippets
+
+- Fetch profile + stats
+```js
+const base = 'https://indexer.twatter.army';
+async function getProfile(id) {
+  const r = await fetch(`${base}/api/profile/${id}`);
+  const j = await r.json();
+  if (!j.success) throw new Error(j.error || 'profile failed');
+  return j.data;
+}
+async function getStats(id) {
+  const r = await fetch(`${base}/api/stats/${id}`);
+  const j = await r.json();
+  if (!j.success) throw new Error(j.error || 'stats failed');
+  return j.data;
+}
+```
+
+- Search
+```js
+async function searchProfiles(q, page = 0, perPage = 20) {
+  const base = 'https://indexer.twatter.army';
+  const r = await fetch(`${base}/api/search?q=${encodeURIComponent(q)}&page=${page}&per_page=${perPage}`);
+  const j = await r.json();
+  if (!j.success) throw new Error(j.error || 'search failed');
+  return j.data;
+}
+```
+
+### Hobby/Free plan notes
+
+- Indexer runs on a schedule in short bursts; data is near-real-time but not streaming
+- Use client-side caching and small page sizes for responsiveness
+- Rely on `/api/indexer-stats` for visibility and manual checks
