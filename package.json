@@ -11,11 +11,23 @@
     "db:reset": "node db/migrate.js reset",
     "index:local": "node scripts/local-index.js",
     "index:profiles": "node scripts/local-index.js --only=profiles",
-    "index:contacts": "node scripts/local-index.js --only=contacts"
+    "index:contacts": "node scripts/local-index.js --only=contacts",
+    "index:local-sqlite": "node scripts/local-index-sqlite.js",
+    "index:local-profiles": "node scripts/local-index-sqlite.js --only=profiles",
+    "index:local-contacts": "node scripts/local-index-sqlite.js --only=contacts",
+    "index:enhanced": "node scripts/enhanced-indexer.js",
+    "index:enhanced-profiles": "node scripts/enhanced-indexer.js --only=profiles",
+    "index:enhanced-contacts": "node scripts/enhanced-indexer.js --only=contacts",
+    "stats": "node scripts/check-stats.js",
+    "api": "node scripts/fast-query-api.js",
+    "test:enhanced": "node scripts/test-enhanced.js",
+    "migrate:enhanced": "node scripts/migrate-enhanced.js"
   },
   "dependencies": {
     "@libsql/client": "latest",
     "bech32": "^1.1.4",
+    "express": "^5.1.0",
+    "sqlite3": "^5.1.7",
     "ws": "^8.17.0"
   },
   "devDependencies": {
