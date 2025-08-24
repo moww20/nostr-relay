@@ -259,16 +259,16 @@ class ProfileManager {
     const client = this.dbManager.getClient();
     
     try {
-      const [totalCount] = await client.execute('SELECT COUNT(*) as count FROM profiles');
-      const [withPictures] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE picture IS NOT NULL');
-      const [withBanners] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE banner IS NOT NULL');
-      const [withNip05] = await client.execute('SELECT COUNT(*) as count FROM profiles WHERE nip05 IS NOT NULL');
+      const total = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
+      const withPictures = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles WHERE picture IS NOT NULL', args: [] });
+      const withBanners = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles WHERE banner IS NOT NULL', args: [] });
+      const withNip05 = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles WHERE nip05 IS NOT NULL', args: [] });
 
       return {
-        total_profiles: totalCount.count,
-        profiles_with_pictures: withPictures.count,
-        profiles_with_banners: withBanners.count,
-        profiles_with_nip05: withNip05.count
+        total_profiles: (total.rows[0] && Number(total.rows[0].c)) || 0,
+        profiles_with_pictures: (withPictures.rows[0] && Number(withPictures.rows[0].c)) || 0,
+        profiles_with_banners: (withBanners.rows[0] && Number(withBanners.rows[0].c)) || 0,
+        profiles_with_nip05: (withNip05.rows[0] && Number(withNip05.rows[0].c)) || 0
       };
     } catch (error) {
       console.error('Failed to get profile stats:', error);

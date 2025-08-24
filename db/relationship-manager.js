@@ -128,30 +128,20 @@ class RelationshipManager {
     try {
       const hexPubkey = pubkey.startsWith('npub') ? npubToHex(pubkey) : pubkey;
       
-      const [followingCount] = await client.execute({
-        sql: 'SELECT COUNT(*) as count FROM relationships WHERE follower_pubkey = ?',
+      const followingRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1', args: [hexPubkey] });
+      const followersRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1', args: [hexPubkey] });
+      const lastUpdateRes = await client.execute({
+        sql: 'SELECT MAX(indexed_at) AS last_update FROM relationships WHERE follower_pubkey = ?1 OR following_pubkey = ?1',
         args: [hexPubkey]
-      });
-
-      const [followersCount] = await client.execute({
-        sql: 'SELECT COUNT(*) as count FROM relationships WHERE following_pubkey = ?',
-        args: [hexPubkey]
-      });
-
-      const [lastUpdate] = await client.execute({
-        sql: `
-          SELECT MAX(indexed_at) as last_update 
-          FROM relationships 
-          WHERE follower_pubkey = ? OR following_pubkey = ?
-        `,
-        args: [hexPubkey, hexPubkey]
       });
 
       return {
         pubkey: hexPubkey,
-        following_count: followingCount.count,
-        followers_count: followersCount.count,
-        last_contact_update: lastUpdate.last_update ? new Date(lastUpdate.last_update * 1000).toISOString() : null
+        following_count: (followingRes.rows[0] && Number(followingRes.rows[0].c)) || 0,
+        followers_count: (followersRes.rows[0] && Number(followersRes.rows[0].c)) || 0,
+        last_contact_update: lastUpdateRes.rows[0] && lastUpdateRes.rows[0].last_update
+          ? new Date(Number(lastUpdateRes.rows[0].last_update) * 1000).toISOString()
+          : null
       };
     } catch (error) {
       console.error('Failed to get relationship stats:', error);
@@ -247,20 +237,13 @@ class RelationshipManager {
       for (const pubkey of pubkeys) {
         const hexPubkey = pubkey.startsWith('npub') ? npubToHex(pubkey) : pubkey;
         
-        const [followingCount] = await client.execute({
-          sql: 'SELECT COUNT(*) as count FROM relationships WHERE follower_pubkey = ?',
-          args: [hexPubkey]
-        });
-
-        const [followersCount] = await client.execute({
-          sql: 'SELECT COUNT(*) as count FROM relationships WHERE following_pubkey = ?',
-          args: [hexPubkey]
-        });
-
+        const followingRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1', args: [hexPubkey] });
+        const followersRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1', args: [hexPubkey] });
+        
         stats.push({
           pubkey: hexPubkey,
-          following_count: followingCount.count,
-          followers_count: followersCount.count
+          following_count: (followingRes.rows[0] && Number(followingRes.rows[0].c)) || 0,
+          followers_count: (followersRes.rows[0] && Number(followersRes.rows[0].c)) || 0
         });
       }
 
@@ -278,14 +261,14 @@ class RelationshipManager {
     const client = this.dbManager.getClient();
     
     try {
-      const [totalRelationships] = await client.execute('SELECT COUNT(*) as count FROM relationships');
-      const [uniqueFollowers] = await client.execute('SELECT COUNT(DISTINCT follower_pubkey) as count FROM relationships');
-      const [uniqueFollowing] = await client.execute('SELECT COUNT(DISTINCT following_pubkey) as count FROM relationships');
+      const totalRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships', args: [] });
+      const uniqueFollowersRes = await client.execute({ sql: 'SELECT COUNT(DISTINCT follower_pubkey) AS c FROM relationships', args: [] });
+      const uniqueFollowingRes = await client.execute({ sql: 'SELECT COUNT(DISTINCT following_pubkey) AS c FROM relationships', args: [] });
 
       return {
-        total_relationships: totalRelationships.count,
-        unique_followers: uniqueFollowers.count,
-        unique_following: uniqueFollowing.count
+        total_relationships: (totalRes.rows[0] && Number(totalRes.rows[0].c)) || 0,
+        unique_followers: (uniqueFollowersRes.rows[0] && Number(uniqueFollowersRes.rows[0].c)) || 0,
+        unique_following: (uniqueFollowingRes.rows[0] && Number(uniqueFollowingRes.rows[0].c)) || 0
       };
     } catch (error) {
       console.error('Failed to get relationship stats:', error);

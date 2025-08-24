@@ -1,4 +1,5 @@
 const { getClient, ensureSchema } = require('../_db');
+const { npubToHex } = require('../../db/utils');
 
 module.exports = async function handler(req, res) {
   try {
@@ -7,10 +8,14 @@ module.exports = async function handler(req, res) {
     const limit = Math.min(1000, parseInt((req.query.limit || '100').toString(), 10) || 100);
     if (!id) return res.status(400).json({ success: false, data: null, error: 'missing id' });
 
+    const candidate = id.toString();
+    const hexId = candidate.startsWith('npub') ? (npubToHex(candidate) || '') : candidate;
+    if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+
     const client = getClient();
     const rows = await client.execute({
       sql: 'SELECT follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at FROM relationships WHERE following_pubkey = ?1 ORDER BY created_at DESC LIMIT ?2',
-      args: [id, limit]
+      args: [hexId, limit]
     });
 
     const list = rows.rows.map(r => ({

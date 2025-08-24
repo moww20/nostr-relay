@@ -262,21 +262,24 @@ class SearchManager {
     const client = this.dbManager.getClient();
     
     try {
-      const [totalTerms] = await client.execute('SELECT COUNT(DISTINCT term) as count FROM search_index');
-      const [totalIndexEntries] = await client.execute('SELECT COUNT(*) as count FROM search_index');
-      const [avgTermsPerProfile] = await client.execute(`
-        SELECT AVG(term_count) as avg_terms
-        FROM (
-          SELECT pubkey, COUNT(*) as term_count
-          FROM search_index
-          GROUP BY pubkey
-        )
-      `);
+      const totalTermsRes = await client.execute({ sql: 'SELECT COUNT(DISTINCT term) AS c FROM search_index', args: [] });
+      const totalEntriesRes = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM search_index', args: [] });
+      const avgTermsRes = await client.execute({
+        sql: `
+          SELECT AVG(term_count) AS avg_terms
+          FROM (
+            SELECT pubkey, COUNT(*) AS term_count
+            FROM search_index
+            GROUP BY pubkey
+          )
+        `,
+        args: []
+      });
 
       return {
-        total_unique_terms: totalTerms.count,
-        total_index_entries: totalIndexEntries.count,
-        avg_terms_per_profile: Math.round(avgTermsPerProfile.avg_terms || 0)
+        total_unique_terms: (totalTermsRes.rows[0] && Number(totalTermsRes.rows[0].c)) || 0,
+        total_index_entries: (totalEntriesRes.rows[0] && Number(totalEntriesRes.rows[0].c)) || 0,
+        avg_terms_per_profile: Math.round(Number(avgTermsRes.rows[0]?.avg_terms || 0))
       };
     } catch (error) {
       console.error('Failed to get search stats:', error);

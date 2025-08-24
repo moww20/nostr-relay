@@ -16,6 +16,5 @@
   "crons": [
     { "path": "/api/indexer-cron", "schedule": "0 2 * * *" }
   ],
-  "env": { "RUST_LOG": "info" },
   "regions": ["iad1"]
 }
