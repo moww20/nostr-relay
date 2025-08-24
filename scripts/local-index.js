@@ -23,12 +23,18 @@ const DEFAULT_RELAYS = [
 	'wss://relay.nostr.io'
 ];
 
+function showHelp() {
+	console.log(`\nUsage: node scripts/indexer-backfill-turso.js [options]\n\nOptions:\n  --relays=LIST           Comma-separated relay URLs\n  --since=SECONDS         Earliest event timestamp (unix seconds)\n  --limit=NUMBER          Total events target (best-effort)\n  --perRelay=NUMBER       Per-relay event cap\n  --only=profiles|contacts  Restrict kinds\n  --runtimeMs=MS          Per-relay socket budget (default 300000)\n`);
+}
+
 function parseArgs() {
 	const args = process.argv.slice(2);
 	const opts = {};
 	for (const a of args) {
+		if (a === '--help' || a === '-h') return { help: true };
 		const [k, v] = a.split('=');
-		opts[k.replace(/^--/, '')] = v === undefined ? true : v;
+		const key = k.replace(/^--/, '').replace(/-([a-z])/g, (_, c) => c.toUpperCase());
+		opts[key] = v === undefined ? true : v;
 	}
 	return opts;
 }
@@ -136,12 +142,16 @@ async function onEventFactory() {
 
 (async () => {
 	const opts = parseArgs();
+	if (opts.help) {
+		showHelp();
+		process.exit(0);
+	}
 	const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(',')).split(',').map(s => s.trim()).filter(Boolean);
-	const since = Number(opts.since || 0); // default to beginning of time
-	const limit = Number(opts.limit || 1000000); // default to 1 million events
-	const perRelay = Number(opts.perRelay || 100000); // default to 100k per relay
+	const since = Number(opts.since || opts.sinceSeconds || 0);
+	const limit = Number(opts.limit || 1000000);
+	const perRelay = Number(opts.perRelay || opts.perRelayLimit || 100000);
 	const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
-	const runtimeMs = Number(opts.runtimeMs || 300000); // default to 5 minutes per relay
+	const runtimeMs = Number(opts.runtimeMs || opts.runtimeMsPerRelay || 300000);
 
 	if (!process.env.TURSO_DATABASE_URL) {
 		console.error('Missing TURSO_DATABASE_URL');

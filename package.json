@@ -9,6 +9,24 @@
     "db:stats": "node db/migrate.js stats",
     "db:health": "node db/migrate.js health",
     "db:reset": "node db/migrate.js reset",
+
+    "index:backfill:turso": "node scripts/indexer-backfill-turso.js",
+    "index:backfill:turso:profiles": "node scripts/indexer-backfill-turso.js --only=profiles",
+    "index:backfill:turso:contacts": "node scripts/indexer-backfill-turso.js --only=contacts",
+
+    "index:backfill:sqlite": "node scripts/indexer-backfill-sqlite.js",
+    "index:backfill:sqlite:profiles": "node scripts/indexer-backfill-sqlite.js --only=profiles",
+    "index:backfill:sqlite:contacts": "node scripts/indexer-backfill-sqlite.js --only=contacts",
+
+    "index:enhanced:sqlite": "node scripts/indexer-enhanced-sqlite.js",
+    "index:enhanced:sqlite:profiles": "node scripts/indexer-enhanced-sqlite.js --only=profiles",
+    "index:enhanced:sqlite:contacts": "node scripts/indexer-enhanced-sqlite.js --only=contacts",
+
+    "dev:api": "node scripts/dev-api-server.js",
+    "sqlite:stats": "node scripts/sqlite-check-stats.js",
+    "sqlite:migrate:enhanced": "node scripts/sqlite-migrate-enhanced.js",
+    "sqlite:test:enhanced": "node scripts/sqlite-test-enhanced.js",
+
     "index:local": "node scripts/local-index.js",
     "index:profiles": "node scripts/local-index.js --only=profiles",
     "index:contacts": "node scripts/local-index.js --only=contacts",

@@ -208,7 +208,7 @@ Use the Turso-backed backfill (writes directly to Turso via HTTP):
 
 ```bash
 # General run (profiles + contacts)
-npm run index:local -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-604800))
+npm run index:backfill:turso -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-604800))
 
 # Profiles only
 npm run index:profiles -- --limit=50000 --perRelay=2500 --since=$(($(date +%s)-2592000))
@@ -246,10 +246,10 @@ If you prefer not to touch Turso while experimenting, use the local stack:
 
 ```bash
 # 1) Index locally into a SQLite file
-npm run index:local-sqlite -- --relays=wss://relay.damus.io --runtimeMs=60000
+npm run index:backfill:sqlite -- --relays=wss://relay.damus.io --runtimeMs=60000
 
 # 2) Start the local Express API (reads the same SQLite)
-npm run api
+npm run dev:api
 # → http://localhost:3000
 
 # 3) Open the search demo in your browser
@@ -280,10 +280,10 @@ Vercel settings (see `vercel.json`):
 - `npm run db:stats` → show Turso stats
 - `npm run db:health` → DB connectivity check
 - `npm run db:reset` → drop Turso tables (dangerous)
-- `npm run index:local` → backfill to Turso from relays
+- `npm run index:backfill:turso` → backfill to Turso from relays
 - `npm run index:profiles` / `index:contacts` → scoped backfill to Turso
-- `npm run index:local-sqlite` → backfill to local SQLite
-- `npm run index:enhanced` → local enhanced indexer (SQLite + extra metadata)
+- `npm run index:backfill:sqlite` → backfill to local SQLite
+- `npm run index:enhanced:sqlite` → local enhanced indexer (SQLite + extra metadata)
 - `npm run migrate:enhanced` → upgrade local SQLite to enhanced schema
 - `npm run api` → start local Express API against local SQLite
 - `npm run test:enhanced` → local enhanced-functionality smoke tests
