@@ -37,7 +37,7 @@ function reqMessage(subId, kinds, since, limit) {
   return JSON.stringify(['REQ', subId, { kinds, since, limit }]);
 }
 
-async function indexRelay(url, sinceTs, perRelayLimit, onEvent) {
+async function indexRelay(url, sinceTs, perRelayLimit, onEvent, subsLimit, only, runtimeMs) {
   return new Promise((resolve) => {
     const ws = new WebSocket(url, { handshakeTimeout: 8000 });
     let events = 0;
@@ -58,8 +58,13 @@ async function indexRelay(url, sinceTs, perRelayLimit, onEvent) {
 
     ws.on('open', () => {
       try {
-        ws.send(reqMessage('profiles', [0], sinceTs, Math.min(10, perRelayLimit)));
-        ws.send(reqMessage('contacts', [3], sinceTs, Math.min(10, perRelayLimit)));
+        const limit = Math.min(subsLimit, perRelayLimit);
+        if (!only || only === 'profiles') {
+          ws.send(reqMessage('profiles', [0], sinceTs, limit));
+        }
+        if (!only || only === 'contacts') {
+          ws.send(reqMessage('contacts', [3], sinceTs, limit));
+        }
       } catch {
         cleanup();
       }
@@ -88,7 +93,7 @@ async function indexRelay(url, sinceTs, perRelayLimit, onEvent) {
     ws.on('error', () => cleanup());
     ws.on('close', () => cleanup());
 
-    setTimeout(cleanup, MAX_RUNTIME_MS + 2000);
+    setTimeout(cleanup, (runtimeMs || MAX_RUNTIME_MS) + 2000);
   });
 }
 
@@ -147,20 +152,34 @@ module.exports = async function handler(req, res) {
     const relays = (process.env.INDEXER_RELAYS || '').split(',').map(s => s.trim()).filter(Boolean);
     const relayList = relays.length ? relays : DEFAULT_RELAYS;
 
-    const sinceDefault = Math.floor(Date.now() / 1000) - 3600; // past hour if no state
+    // request overrides via query: ?since=...&limit=...&per_relay=...&relays=...&subs_limit=...&only=profiles|contacts&runtime_ms=...
+    const nowSec = Math.floor(Date.now() / 1000);
+    const sinceParam = parseInt((req.query.since || '').toString(), 10);
+    const limitParam = parseInt((req.query.limit || '').toString(), 10);
+    const perRelayParam = parseInt((req.query.per_relay || '').toString(), 10);
+    const relaysParam = parseInt((req.query.relays || '').toString(), 10);
+    const subsLimitParam = parseInt((req.query.subs_limit || '').toString(), 10);
+    const onlyParam = (req.query.only || '').toString();
+    const runtimeMsParam = parseInt((req.query.runtime_ms || '').toString(), 10);
+
+    const sinceDefault = nowSec - 3600; // past hour if no state
     const lastStateTs = await getLastIndexedTs(client);
-    const sinceTs = lastStateTs > 0 ? Math.max(0, lastStateTs - 60) : sinceDefault; // small overlap
+    const sinceTs = Number.isFinite(sinceParam) && sinceParam > 0
+      ? sinceParam
+      : (lastStateTs > 0 ? Math.max(0, lastStateTs - 60) : sinceDefault);
 
     let totalEvents = 0;
     let relaysIndexed = 0;
 
+    const maxRelays = Number.isFinite(relaysParam) && relaysParam > 0 ? relaysParam : Math.max(1, MAX_RELAYS_PER_RUN);
+    const subsLimit = Number.isFinite(subsLimitParam) && subsLimitParam > 0 ? subsLimitParam : 10;
     const startRun = Date.now();
-    for (const url of relayList.slice(0, Math.max(1, MAX_RELAYS_PER_RUN))) {
-      if (totalEvents >= MAX_EVENTS_TOTAL) break;
+    for (const url of relayList.slice(0, maxRelays)) {
+      if (totalEvents >= (Number.isFinite(limitParam) && limitParam > 0 ? limitParam : MAX_EVENTS_TOTAL)) break;
       if (Date.now() - startRun > TOTAL_RUNTIME_MS) break;
-      const remaining = Math.max(0, MAX_EVENTS_TOTAL - totalEvents);
-      const perRelay = Math.min(MAX_EVENTS_PER_RELAY, remaining);
-      const count = await indexRelay(url, sinceTs, perRelay, handleEvent);
+      const remaining = Math.max(0, (Number.isFinite(limitParam) && limitParam > 0 ? limitParam : MAX_EVENTS_TOTAL) - totalEvents);
+      const perRelay = Math.min((Number.isFinite(perRelayParam) && perRelayParam > 0 ? perRelayParam : MAX_EVENTS_PER_RELAY), remaining);
+      const count = await indexRelay(url, sinceTs, perRelay, handleEvent, subsLimit, onlyParam || null, runtimeMsParam);
       totalEvents += count;
       relaysIndexed += 1;
     }

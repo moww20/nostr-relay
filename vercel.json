@@ -11,7 +11,7 @@
     { "src": "/api/indexer-cron", "dest": "/api/indexer-cron.js" }
   ],
   "functions": {
-    "api/indexer-cron.js": { "maxDuration": 10, "memory": 1024 }
+    "api/indexer-cron.js": { "maxDuration": 60, "memory": 1024 }
   },
   "crons": [
     { "path": "/api/indexer-cron", "schedule": "0 2 * * *" }
