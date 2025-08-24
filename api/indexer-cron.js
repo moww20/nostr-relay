@@ -12,9 +12,11 @@ const DEFAULT_RELAYS = [
   'wss://purplepag.es'
 ];
 
-const MAX_EVENTS_TOTAL = parseInt(process.env.INDEXER_MAX_EVENTS || '150', 10);
-const MAX_EVENTS_PER_RELAY = parseInt(process.env.INDEXER_MAX_EVENTS_PER_RELAY || '75', 10);
-const MAX_RUNTIME_MS = parseInt(process.env.INDEXER_MAX_RUNTIME_MS || '8000', 10); // hobby-friendly
+const MAX_EVENTS_TOTAL = parseInt(process.env.INDEXER_MAX_EVENTS || '60', 10);
+const MAX_EVENTS_PER_RELAY = parseInt(process.env.INDEXER_MAX_EVENTS_PER_RELAY || '30', 10);
+const MAX_RUNTIME_MS = parseInt(process.env.INDEXER_MAX_RUNTIME_MS || '2500', 10); // hobby-friendly
+const MAX_RELAYS_PER_RUN = parseInt(process.env.INDEXER_MAX_RELAYS_PER_RUN || '1', 10);
+const TOTAL_RUNTIME_MS = parseInt(process.env.INDEXER_TOTAL_RUNTIME_MS || '9000', 10);
 
 async function getLastIndexedTs(client) {
   try {
@@ -56,8 +58,8 @@ async function indexRelay(url, sinceTs, perRelayLimit, onEvent) {
 
     ws.on('open', () => {
       try {
-        ws.send(reqMessage('profiles', [0], sinceTs, perRelayLimit));
-        ws.send(reqMessage('contacts', [3], sinceTs, perRelayLimit));
+        ws.send(reqMessage('profiles', [0], sinceTs, Math.min(10, perRelayLimit)));
+        ws.send(reqMessage('contacts', [3], sinceTs, Math.min(10, perRelayLimit)));
       } catch {
         cleanup();
       }
@@ -152,8 +154,10 @@ module.exports = async function handler(req, res) {
     let totalEvents = 0;
     let relaysIndexed = 0;
 
-    for (const url of relayList) {
+    const startRun = Date.now();
+    for (const url of relayList.slice(0, Math.max(1, MAX_RELAYS_PER_RUN))) {
       if (totalEvents >= MAX_EVENTS_TOTAL) break;
+      if (Date.now() - startRun > TOTAL_RUNTIME_MS) break;
       const remaining = Math.max(0, MAX_EVENTS_TOTAL - totalEvents);
       const perRelay = Math.min(MAX_EVENTS_PER_RELAY, remaining);
       const count = await indexRelay(url, sinceTs, perRelay, handleEvent);
