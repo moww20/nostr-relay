@@ -326,10 +326,11 @@ class ProfileManager {
         args: [pubkey]
       });
 
-      // Insert new search terms
-      for (const term of terms) {
+      // Insert new search terms (deduplicated and idempotent)
+      const uniqueTerms = Array.from(new Set(terms));
+      for (const term of uniqueTerms) {
         await client.execute({
-          sql: 'INSERT INTO search_index (term, pubkey, field_type) VALUES (?, ?, ?)',
+          sql: 'INSERT OR IGNORE INTO search_index (term, pubkey, field_type) VALUES (?, ?, ?)',
           args: [term, pubkey, 'profile']
         });
       }

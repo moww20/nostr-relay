@@ -208,22 +208,26 @@ class LocalProfileManager {
 
           // Then insert new search terms
           const insertPromises = [];
+          const uniqueWords = new Set();
           for (const term of terms) {
             const words = term.split(/\s+/).filter((word) => word.length > 2);
             for (const word of words) {
-              insertPromises.push(
-                new Promise((resolve, reject) => {
-                  client.run(
-                    'INSERT INTO search_index (term, pubkey, field_type) VALUES (?, ?, ?)',
-                    [word, pubkey, 'profile'],
-                    (err) => {
-                      if (err) reject(err);
-                      else resolve();
-                    }
-                  );
-                })
-              );
+              uniqueWords.add(word);
             }
+          }
+          for (const word of uniqueWords) {
+            insertPromises.push(
+              new Promise((resolve, reject) => {
+                client.run(
+                  'INSERT OR IGNORE INTO search_index (term, pubkey, field_type) VALUES (?, ?, ?)',
+                  [word, pubkey, 'profile'],
+                  (err) => {
+                    if (err) reject(err);
+                    else resolve();
+                  }
+                );
+              })
+            );
           }
 
           Promise.all(insertPromises)
