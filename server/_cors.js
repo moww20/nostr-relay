@@ -50,3 +50,5 @@ function applyCors(req, res) {
 }
 
 module.exports = { applyCors };
+
+

@@ -1,5 +1,5 @@
-const { getClient, ensureSchema } = require('./_db');
-const { applyCors } = require('./_cors');
+const { getClient, ensureSchema } = require('../server/_db');
+const { applyCors } = require('../server/_cors');
 const { normalizePubkey, hexToNpub } = require('../db/utils');
 
 async function handleTrending(req, res) {
