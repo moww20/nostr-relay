@@ -1,20 +1,7 @@
 {
   "version": 2,
   "routes": [
-    { "src": "/api/health", "dest": "/api/health.js" },
-    { "src": "/api/search", "dest": "/api/search.js" },
-    { "src": "/api/profile/bulk", "dest": "/api/profile/bulk.js" },
-    { "src": "/api/profile/(.*)", "dest": "/api/profile/[id].js" },
-    { "src": "/api/following/(.*)", "dest": "/api/following/[id].js" },
-    { "src": "/api/followers/(.*)", "dest": "/api/followers/[id].js" },
-    { "src": "/api/stats/(.*)", "dest": "/api/stats/[id].js" },
-    { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" },
-    { "src": "/api/indexer-cron", "dest": "/api/indexer-cron.js" },
-    { "src": "/api/profiles", "dest": "/api/profile/bulk.js" },
-    { "src": "/api/trending", "dest": "/api/trending.js" },
-    { "src": "/api/engagement", "dest": "/api/engagement.js" },
-    { "src": "/api/search/events", "dest": "/api/search-events.js" },
-    { "src": "/api/discovery", "dest": "/api/discovery.js" }
+    { "src": "/api/.*", "dest": "/api/data.js" }
   ],
   "functions": {
     "api/indexer-cron.js": { "maxDuration": 60, "memory": 1024 }
