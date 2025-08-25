@@ -22,6 +22,7 @@
     "sqlite:stats": "node scripts/sqlite-check-stats.js",
     "sqlite:migrate:enhanced": "node scripts/sqlite-migrate-enhanced.js",
     "sqlite:test:enhanced": "node scripts/sqlite-test-enhanced.js",
+    "indexer:push:trending": "node scripts/indexer-push-trending.js",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write \"**/*.{js,json,md}\""
   },
