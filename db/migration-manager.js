@@ -105,6 +105,47 @@ class MigrationManager {
         )
       `);
 
+      // Events storage for search/threads
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS events (
+          id TEXT PRIMARY KEY,
+          kind INTEGER NOT NULL,
+          pubkey TEXT NOT NULL,
+          created_at INTEGER NOT NULL,
+          content TEXT,
+          tags_json TEXT,
+          deleted INTEGER DEFAULT 0
+        )
+      `);
+
+      // FTS5 for events (content + tags)
+      await client.execute(`
+        CREATE VIRTUAL TABLE IF NOT EXISTS events_fts USING fts5(
+          id UNINDEXED,
+          content,
+          tags,
+          tokenize='porter'
+        )
+      `);
+
+      // Triggers to keep FTS in sync
+      await client.execute(`
+        CREATE TRIGGER IF NOT EXISTS trg_events_ai AFTER INSERT ON events BEGIN
+          INSERT INTO events_fts(rowid, id, content, tags) VALUES (new.rowid, new.id, new.content, COALESCE(new.tags_json,''));
+        END;
+      `);
+      await client.execute(`
+        CREATE TRIGGER IF NOT EXISTS trg_events_ad AFTER DELETE ON events BEGIN
+          INSERT INTO events_fts(events_fts, rowid, id, content, tags) VALUES('delete', old.rowid, old.id, old.content, COALESCE(old.tags_json,''));
+        END;
+      `);
+      await client.execute(`
+        CREATE TRIGGER IF NOT EXISTS trg_events_au AFTER UPDATE ON events BEGIN
+          INSERT INTO events_fts(events_fts, rowid, id, content, tags) VALUES('delete', old.rowid, old.id, old.content, COALESCE(old.tags_json,''));
+          INSERT INTO events_fts(rowid, id, content, tags) VALUES (new.rowid, new.id, new.content, COALESCE(new.tags_json,''));
+        END;
+      `);
+
       // Create indexes for better performance
       await this.createIndexes(client);
 
@@ -137,6 +178,8 @@ class MigrationManager {
       , 'CREATE INDEX IF NOT EXISTS idx_trend_items_snapshot ON trending_items(snapshot_id)'
       , 'CREATE INDEX IF NOT EXISTS idx_trend_items_event ON trending_items(event_id)'
       , 'CREATE INDEX IF NOT EXISTS idx_trend_snap_created ON trending_snapshots(created_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_events_pubkey ON events(pubkey)'
     ];
 
     for (const index of indexes) {
