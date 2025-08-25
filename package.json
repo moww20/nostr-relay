@@ -23,6 +23,7 @@
     "sqlite:migrate:enhanced": "node scripts/sqlite-migrate-enhanced.js",
     "sqlite:test:enhanced": "node scripts/sqlite-test-enhanced.js",
     "indexer:push:trending": "node scripts/indexer-push-trending.js",
+    "indexer:push:all": "node scripts/indexer-push-all.js",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write \"**/*.{js,json,md}\""
   },
