@@ -1,5 +1,6 @@
 const { getClient, ensureSchema } = require('./_db');
 const { applyCors } = require('./_cors');
+const { normalizePubkey, hexToNpub } = require('../db/utils');
 
 async function handleTrending(req, res) {
   await ensureSchema();
@@ -122,6 +123,93 @@ async function handleSuggest(req, res) {
   return res.status(200).json({ success: true, data: { suggestions }, error: null });
 }
 
+// Minimal handlers for legacy endpoints to avoid extra serverless functions
+async function handleSearchProfiles(req, res) {
+  await ensureSchema();
+  const q = (req.query.q || '').toString();
+  const rawPage = parseInt((req.query.page || '0').toString(), 10) || 0;
+  const page = Math.max(0, rawPage - 1);
+  const perPage = Math.min(100, parseInt((req.query.per_page || '20').toString(), 10) || 20);
+  const terms = q.split(/\s+/).map((s) => s.trim().toLowerCase()).filter((w) => w.length > 2);
+  if (!terms.length) { return res.status(200).json({ success: true, data: { profiles: [], total_count: 0, page, per_page: perPage }, error: null }); }
+  const where = terms.map(() => '(si.term LIKE ? OR p.search_vector LIKE ?)').join(' OR ');
+  const whereArgs = terms.flatMap((t) => [`%${t}%`, `%${t}%`]);
+  const client = getClient();
+  const countSql = `SELECT COUNT(DISTINCT p.pubkey) AS c FROM profiles p JOIN search_index si ON p.pubkey = si.pubkey WHERE ${where}`;
+  const count = await client.execute({ sql: countSql, args: whereArgs });
+  const total = (count.rows[0] && Number(count.rows[0].c)) || 0;
+  const listSql = `SELECT DISTINCT p.pubkey, p.name, p.display_name, p.about, p.picture, p.banner, p.website, p.lud16, p.nip05, p.created_at, p.indexed_at FROM profiles p JOIN search_index si ON p.pubkey = si.pubkey WHERE ${where} ORDER BY p.created_at DESC LIMIT ? OFFSET ?`;
+  const listArgs = [...whereArgs, perPage, page * perPage];
+  const rows = await client.execute({ sql: listSql, args: listArgs });
+  const profiles = rows.rows.map((r) => ({ pubkey: r.pubkey, name: r.name || null, display_name: r.display_name || null, about: r.about || null, picture: r.picture || null, banner: r.banner || null, website: r.website || null, lud16: r.lud16 || null, nip05: r.nip05 || null, created_at: Number(r.created_at) || 0, indexed_at: Number(r.indexed_at) || 0, relay_sources: [], search_terms: [] }));
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data: { profiles, total_count: total, page: page + 1, per_page: perPage }, error: null });
+}
+
+async function handleProfileBulk(req, res) {
+  await ensureSchema();
+  const idsParam = (req.query.ids || '').toString();
+  const idList = Array.isArray(req.query.id) ? req.query.id : (req.query.id ? [String(req.query.id)] : []);
+  const raw = idsParam || idList.join(',');
+  if (!raw) return res.status(400).json({ success: false, data: null, error: 'missing ids' });
+  const tokens = raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+  const normalized = Array.from(new Set(tokens.map((t) => normalizePubkey(t)).filter(Boolean))).slice(0, 500);
+  const client = getClient();
+  const placeholders = normalized.map((_, i) => `?${i + 1}`).join(',');
+  const rows = await client.execute({ sql: `SELECT pubkey, name, display_name, about, picture, banner, website, lud16, nip05, created_at, indexed_at FROM profiles WHERE pubkey IN (${placeholders})`, args: normalized });
+  const items = rows.rows.map((r) => ({ pubkey: r.pubkey, name: r.name || null, display_name: r.display_name || null, about: r.about || null, picture: r.picture || null, banner: r.banner || null, website: r.website || null, lud16: r.lud16 || null, nip05: r.nip05 || null, created_at: Number(r.created_at) || 0, indexed_at: Number(r.indexed_at) || 0, npub: hexToNpub(r.pubkey) || null }));
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data: { profiles: items }, error: null });
+}
+
+async function handleProfileById(req, res, id) {
+  await ensureSchema();
+  const hexId = normalizePubkey(String(id||''));
+  if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+  const client = getClient();
+  const rows = await client.execute({ sql: 'SELECT pubkey, name, display_name, about, picture, banner, website, lud16, nip05, created_at, indexed_at FROM profiles WHERE pubkey = ?1 LIMIT 1', args: [hexId] });
+  if (!rows.rows.length) return res.status(404).json({ success: false, data: null, error: 'Profile not found' });
+  const r = rows.rows[0];
+  const profile = { pubkey: r.pubkey, name: r.name || null, display_name: r.display_name || null, about: r.about || null, picture: r.picture || null, banner: r.banner || null, website: r.website || null, lud16: r.lud16 || null, nip05: r.nip05 || null, created_at: Number(r.created_at) || 0, indexed_at: Number(r.indexed_at) || 0 };
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data: profile, error: null });
+}
+
+async function handleFollowing(req, res, id) {
+  await ensureSchema();
+  const hexId = normalizePubkey(String(id||''));
+  if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+  const limit = Math.max(1, Math.min(1000, parseInt((req.query.limit||'100'), 10) || 100));
+  const client = getClient();
+  const rows = await client.execute({ sql: 'SELECT follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at FROM relationships WHERE follower_pubkey = ?1 ORDER BY created_at DESC LIMIT ?2', args: [hexId, limit] });
+  const list = rows.rows.map((r) => ({ follower_pubkey: r.follower_pubkey, following_pubkey: r.following_pubkey, relay: r.relay || null, petname: r.petname || null, created_at: Number(r.created_at)||0, indexed_at: Number(r.indexed_at)||0 }));
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data: list, error: null });
+}
+
+async function handleFollowers(req, res, id) {
+  await ensureSchema();
+  const hexId = normalizePubkey(String(id||''));
+  if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+  const limit = Math.max(1, Math.min(1000, parseInt((req.query.limit||'100'), 10) || 100));
+  const client = getClient();
+  const rows = await client.execute({ sql: 'SELECT follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at FROM relationships WHERE following_pubkey = ?1 ORDER BY created_at DESC LIMIT ?2', args: [hexId, limit] });
+  const list = rows.rows.map((r) => ({ follower_pubkey: r.follower_pubkey, following_pubkey: r.following_pubkey, relay: r.relay || null, petname: r.petname || null, created_at: Number(r.created_at)||0, indexed_at: Number(r.indexed_at)||0 }));
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data: list, error: null });
+}
+
+async function handleUserStats(req, res, id) {
+  await ensureSchema();
+  const hexId = normalizePubkey(String(id||''));
+  if (!hexId) return res.status(400).json({ success: false, data: null, error: 'invalid id' });
+  const client = getClient();
+  const following = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE follower_pubkey = ?1', args: [hexId] });
+  const followers = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM relationships WHERE following_pubkey = ?1', args: [hexId] });
+  const data = { pubkey: hexId, following_count: (following.rows[0] && Number(following.rows[0].c)) || 0, followers_count: (followers.rows[0] && Number(followers.rows[0].c)) || 0, last_contact_update: null };
+  res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+  return res.status(200).json({ success: true, data, error: null });
+}
 module.exports = async function handler(req, res) {
   const cors = applyCors(req, res);
   if (cors.ended) return;
@@ -141,6 +229,15 @@ module.exports = async function handler(req, res) {
       return handleThread(req, res, id);
     }
     if (path === '/api/search/suggest') return handleSuggest(req, res);
+    if (path === '/api/health') { res.setHeader('Cache-Control','public, max-age=30'); return res.status(200).json({ success: true, data: 'OK', error: null }); }
+    if (path === '/api/search') return handleSearchProfiles(req, res);
+    if (path === '/api/profile/bulk' || path === '/api/profiles') return handleProfileBulk(req, res);
+    if (path.startsWith('/api/profile/')) { const id = decodeURIComponent(path.replace('/api/profile/','')); return handleProfileById(req, res, id); }
+    if (path.startsWith('/api/following/')) { const id = decodeURIComponent(path.replace('/api/following/','')); return handleFollowing(req, res, id); }
+    if (path.startsWith('/api/followers/')) { const id = decodeURIComponent(path.replace('/api/followers/','')); return handleFollowers(req, res, id); }
+    if (path.startsWith('/api/stats/')) { const id = decodeURIComponent(path.replace('/api/stats/','')); return handleUserStats(req, res, id); }
+    if (path === '/api/indexer-stats') return handleIndexerStats(req, res);
+    if (path === '/api/indexer-cron') { return res.status(200).json({ success: true, data: { skipped: true }, error: null }); }
     return res.status(404).json({ success: false, data: null, error: 'not found' });
   } catch (e) {
     return res.status(500).json({ success: false, data: null, error: e?.message || 'error' });
