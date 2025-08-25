@@ -10,6 +10,7 @@
     { "src": "/api/stats/(.*)", "dest": "/api/stats/[id].js" },
     { "src": "/api/indexer-stats", "dest": "/api/indexer-stats.js" },
     { "src": "/api/indexer-cron", "dest": "/api/indexer-cron.js" },
+    { "src": "/api/profiles", "dest": "/api/profile/bulk.js" },
     { "src": "/api/trending", "dest": "/api/trending.js" },
     { "src": "/api/engagement", "dest": "/api/engagement.js" }
   ],

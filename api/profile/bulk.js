@@ -10,7 +10,10 @@ module.exports = async function handler(req, res) {
     if (req.method !== 'GET') return res.status(405).json({ success: false, data: null, error: 'method not allowed' });
     await ensureSchema();
 
-    const raw = (req.query.ids || '').toString();
+    // Accept either ids=comma,separated or repeated id=...&id=...
+    const idsParam = (req.query.ids || '').toString();
+    const idList = Array.isArray(req.query.id) ? req.query.id : (req.query.id ? [String(req.query.id)] : []);
+    const raw = idsParam || idList.join(',');
     if (!raw) return res.status(400).json({ success: false, data: null, error: 'missing ids' });
 
     const tokens = raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
