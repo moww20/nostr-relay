@@ -105,6 +105,28 @@ class MigrationManager {
         )
       `);
 
+      // Discovery snapshots (For You)
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS discovery_snapshots (
+          id TEXT PRIMARY KEY,
+          created_at INTEGER NOT NULL
+        )
+      `);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS discovery_items (
+          snapshot_id TEXT NOT NULL,
+          rank INTEGER NOT NULL,
+          event_id TEXT NOT NULL,
+          pubkey TEXT NOT NULL,
+          kind INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          score REAL NOT NULL,
+          reasons_json TEXT,
+          PRIMARY KEY (snapshot_id, rank)
+        )
+      `);
+
       // Events storage for search/threads
       await client.execute(`
         CREATE TABLE IF NOT EXISTS events (
@@ -146,6 +168,37 @@ class MigrationManager {
         END;
       `);
 
+      // Author signals: stats, trust, topic affinity
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS author_stats (
+          pubkey TEXT PRIMARY KEY,
+          followers INTEGER DEFAULT 0,
+          following INTEGER DEFAULT 0,
+          posts24h INTEGER DEFAULT 0,
+          repost_rate REAL DEFAULT 0,
+          zap_sum24h INTEGER DEFAULT 0,
+          updated_at INTEGER NOT NULL
+        )
+      `);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS trust_scores (
+          pubkey TEXT PRIMARY KEY,
+          score REAL NOT NULL,
+          updated_at INTEGER NOT NULL
+        )
+      `);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS topic_affinities (
+          pubkey TEXT NOT NULL,
+          topic TEXT NOT NULL,
+          score REAL NOT NULL,
+          updated_at INTEGER NOT NULL,
+          PRIMARY KEY (pubkey, topic)
+        )
+      `);
+
       // Create indexes for better performance
       await this.createIndexes(client);
 
@@ -178,8 +231,14 @@ class MigrationManager {
       , 'CREATE INDEX IF NOT EXISTS idx_trend_items_snapshot ON trending_items(snapshot_id)'
       , 'CREATE INDEX IF NOT EXISTS idx_trend_items_event ON trending_items(event_id)'
       , 'CREATE INDEX IF NOT EXISTS idx_trend_snap_created ON trending_snapshots(created_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_disc_items_snapshot ON discovery_items(snapshot_id)'
+      , 'CREATE INDEX IF NOT EXISTS idx_disc_items_event ON discovery_items(event_id)'
+      , 'CREATE INDEX IF NOT EXISTS idx_disc_snap_created ON discovery_snapshots(created_at)'
       , 'CREATE INDEX IF NOT EXISTS idx_events_created ON events(created_at)'
       , 'CREATE INDEX IF NOT EXISTS idx_events_pubkey ON events(pubkey)'
+      , 'CREATE INDEX IF NOT EXISTS idx_author_stats_updated ON author_stats(updated_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_trust_scores_updated ON trust_scores(updated_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_topic_aff_updated ON topic_affinities(updated_at)'
     ];
 
     for (const index of indexes) {

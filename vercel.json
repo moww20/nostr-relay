@@ -13,7 +13,8 @@
     { "src": "/api/profiles", "dest": "/api/profile/bulk.js" },
     { "src": "/api/trending", "dest": "/api/trending.js" },
     { "src": "/api/engagement", "dest": "/api/engagement.js" },
-    { "src": "/api/search/events", "dest": "/api/search-events.js" }
+    { "src": "/api/search/events", "dest": "/api/search-events.js" },
+    { "src": "/api/discovery", "dest": "/api/discovery.js" }
   ],
   "functions": {
     "api/indexer-cron.js": { "maxDuration": 60, "memory": 1024 }
