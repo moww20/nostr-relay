@@ -6,6 +6,10 @@ module.exports = async function handler(req, res) {
   if (cors.ended) return;
   if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET,OPTIONS');
+      return res.status(405).json({ success: false, data: null, error: 'method not allowed' });
+    }
     await ensureSchema();
     const client = getClient();
     const profiles = await client.execute({ sql: 'SELECT COUNT(*) AS c FROM profiles', args: [] });
@@ -29,6 +33,7 @@ module.exports = async function handler(req, res) {
       last_indexed: lastIndexed,
       search_index_size: (searchIndex.rows[0] && Number(searchIndex.rows[0].c)) || 0
     };
+    res.setHeader('Cache-Control', 'public, max-age=30, stale-while-revalidate=60');
     res.status(200).json({ success: true, data, error: null });
   } catch (e) {
     res.status(500).json({ success: false, data: null, error: e?.message || 'error' });

@@ -1,4 +1,9 @@
 const bech32 = require('bech32');
+let nip19;
+try {
+  // Lazy require to avoid hard crash if not present in some environments
+  nip19 = require('nostr-tools').nip19;
+} catch {}
 const crypto = require('crypto');
 
 /**
@@ -6,26 +11,17 @@ const crypto = require('crypto');
  */
 function hexToNpub(hexPubkey) {
   try {
-    if (!hexPubkey || typeof hexPubkey !== 'string') {
-      return '';
-    }
-
-    // Remove any prefix if present
+    if (!hexPubkey || typeof hexPubkey !== 'string') return '';
     const cleanHex = hexPubkey.replace(/^0x/, '');
-
-    // Validate hex string
-    if (!/^[0-9a-fA-F]{64}$/.test(cleanHex)) {
-      console.warn('Invalid hex pubkey format:', hexPubkey);
-      return '';
+    if (!/^[0-9a-fA-F]{64}$/.test(cleanHex)) return '';
+    if (nip19 && typeof nip19.npubEncode === 'function') {
+      return nip19.npubEncode(cleanHex);
     }
-
     const bytes = Buffer.from(cleanHex, 'hex');
     const words = bech32.toWords(bytes);
     const npub = bech32.encode('npub', words);
-
     return npub || '';
-  } catch (error) {
-    console.error('Error converting hex to npub:', error);
+  } catch {
     return '';
   }
 }
@@ -35,22 +31,26 @@ function hexToNpub(hexPubkey) {
  */
 function npubToHex(npub) {
   try {
-    if (!npub || typeof npub !== 'string') {
-      return '';
+    if (!npub || typeof npub !== 'string') return '';
+    const token = npub.replace(/^nostr:/i, '');
+    if (nip19 && typeof nip19.decode === 'function') {
+      try {
+        const dec = nip19.decode(token);
+        if (dec && dec.type === 'npub') {
+          if (typeof dec.data === 'string') return dec.data;
+          if (dec.data && (dec.data.length || dec.data.byteLength)) {
+            const bytes = Buffer.from(dec.data);
+            return bytes.toString('hex');
+          }
+        }
+      } catch {}
     }
-
-    const decoded = bech32.decode(npub);
-    if (!decoded || decoded.prefix !== 'npub') {
-      console.warn('Invalid npub format:', npub);
-      return '';
-    }
-
+    const decoded = bech32.decode(token);
+    if (!decoded || decoded.prefix.toLowerCase() !== 'npub') return '';
     const bytes = bech32.fromWords(decoded.words);
-    const hex = Buffer.from(bytes).toString('hex');
-
-    return hex || '';
-  } catch (error) {
-    console.error('Error converting npub to hex:', error);
+    if (!bytes || bytes.length !== 32) return '';
+    return Buffer.from(bytes).toString('hex');
+  } catch {
     return '';
   }
 }
@@ -63,17 +63,28 @@ function isValidPubkey(pubkey) {
     return false;
   }
 
-  if (pubkey.startsWith('npub')) {
-    try {
-      const decoded = bech32.decode(pubkey);
-      return decoded && decoded.prefix === 'npub' && decoded.words.length === 32;
-    } catch {
-      return false;
+  const token = pubkey.replace(/^nostr:/i, '');
+  if (/^npub/i.test(token)) {
+    // Prefer nip19 if available
+    if (nip19 && typeof nip19.decode === 'function') {
+      try {
+        const dec = nip19.decode(token);
+        if (dec.type !== 'npub') return false;
+        if (typeof dec.data === 'string') return /^[0-9a-fA-F]{64}$/.test(dec.data);
+        const bytes = Buffer.from(dec.data);
+        return bytes.length === 32;
+      } catch { return false; }
     }
+    try {
+      const dec = bech32.decode(token);
+      if (!dec || dec.prefix.toLowerCase() !== 'npub') return false;
+      const bytes = bech32.fromWords(dec.words);
+      return Array.isArray(bytes) ? bytes.length === 32 : Buffer.from(bytes).length === 32;
+    } catch { return false; }
   }
 
   // Check hex format
-  const cleanHex = pubkey.replace(/^0x/, '');
+  const cleanHex = token.replace(/^0x/, '');
   return /^[0-9a-fA-F]{64}$/.test(cleanHex);
 }
 
@@ -85,11 +96,10 @@ function normalizePubkey(pubkey) {
     return '';
   }
 
-  if (pubkey.startsWith('npub')) {
-    return npubToHex(pubkey);
-  }
+  const token = String(pubkey).replace(/^nostr:/i, '');
+  if (/^npub/i.test(token)) return npubToHex(token);
 
-  return pubkey.replace(/^0x/, '');
+  return token.replace(/^0x/, '');
 }
 
 /**

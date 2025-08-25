@@ -67,6 +67,44 @@ class MigrationManager {
         )
       `);
 
+      // Trending and engagement tables
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS engagement_counts (
+          event_id TEXT PRIMARY KEY,
+          likes INTEGER DEFAULT 0,
+          reposts INTEGER DEFAULT 0,
+          replies INTEGER DEFAULT 0,
+          zaps INTEGER DEFAULT 0,
+          updated_at INTEGER NOT NULL
+        )
+      `);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS trending_snapshots (
+          id TEXT PRIMARY KEY,
+          window_start INTEGER NOT NULL,
+          window_end INTEGER NOT NULL,
+          created_at INTEGER NOT NULL
+        )
+      `);
+
+      await client.execute(`
+        CREATE TABLE IF NOT EXISTS trending_items (
+          snapshot_id TEXT NOT NULL,
+          rank INTEGER NOT NULL,
+          event_id TEXT NOT NULL,
+          pubkey TEXT NOT NULL,
+          kind INTEGER NOT NULL,
+          created_at INTEGER NOT NULL,
+          score REAL NOT NULL,
+          likes INTEGER DEFAULT 0,
+          reposts INTEGER DEFAULT 0,
+          replies INTEGER DEFAULT 0,
+          zaps INTEGER DEFAULT 0,
+          PRIMARY KEY (snapshot_id, rank)
+        )
+      `);
+
       // Create indexes for better performance
       await this.createIndexes(client);
 
@@ -95,6 +133,10 @@ class MigrationManager {
       'CREATE INDEX IF NOT EXISTS idx_search_index_term ON search_index(term)',
       'CREATE INDEX IF NOT EXISTS idx_search_index_pubkey ON search_index(pubkey)',
       'CREATE INDEX IF NOT EXISTS idx_search_index_field_type ON search_index(field_type)'
+      , 'CREATE INDEX IF NOT EXISTS idx_engagement_updated ON engagement_counts(updated_at)'
+      , 'CREATE INDEX IF NOT EXISTS idx_trend_items_snapshot ON trending_items(snapshot_id)'
+      , 'CREATE INDEX IF NOT EXISTS idx_trend_items_event ON trending_items(event_id)'
+      , 'CREATE INDEX IF NOT EXISTS idx_trend_snap_created ON trending_snapshots(created_at)'
     ];
 
     for (const index of indexes) {

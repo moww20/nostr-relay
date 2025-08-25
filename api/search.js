@@ -6,9 +6,15 @@ module.exports = async function handler(req, res) {
   if (cors.ended) return;
   if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET,OPTIONS');
+      return res.status(405).json({ success: false, data: null, error: 'method not allowed' });
+    }
     await ensureSchema();
     const q = (req.query.q || '').toString();
-    const page = parseInt((req.query.page || '0').toString(), 10) || 0;
+    const rawPage = parseInt((req.query.page || '0').toString(), 10) || 0;
+    // Accept both 0-based and 1-based: interpret 1 as first page too
+    const page = Math.max(0, rawPage - 1);
     const perPage = Math.min(100, parseInt((req.query.per_page || '20').toString(), 10) || 20);
 
     const terms = q
@@ -51,7 +57,9 @@ module.exports = async function handler(req, res) {
       search_terms: []
     }));
 
-    res.status(200).json({ success: true, data: { profiles, total_count: total, page, per_page: perPage }, error: null });
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
+    // Return page as 1-based for clarity
+    res.status(200).json({ success: true, data: { profiles, total_count: total, page: page + 1, per_page: perPage }, error: null });
   } catch (e) {
     res.status(500).json({ success: false, data: null, error: e?.message || 'error' });
   }

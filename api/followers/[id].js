@@ -1,5 +1,5 @@
 const { getClient, ensureSchema } = require('../_db');
-const { npubToHex } = require('../../db/utils');
+const { normalizePubkey } = require('../../db/utils');
 const { applyCors } = require('../_cors');
 
 module.exports = async function handler(req, res) {
@@ -7,15 +7,19 @@ module.exports = async function handler(req, res) {
   if (cors.ended) return;
   if (!cors.allowed) return res.status(403).json({ success: false, data: null, error: 'forbidden' });
   try {
+    if (req.method !== 'GET') {
+      res.setHeader('Allow', 'GET,OPTIONS');
+      return res.status(405).json({ success: false, data: null, error: 'method not allowed' });
+    }
     await ensureSchema();
     const { id } = req.query;
-    const limit = Math.min(1000, parseInt((req.query.limit || '100').toString(), 10) || 100);
+    const rawLimit = parseInt((req.query.limit || '100').toString(), 10);
+    const limit = Math.max(1, Math.min(1000, Number.isFinite(rawLimit) ? rawLimit : 100));
     if (!id) {
       return res.status(400).json({ success: false, data: null, error: 'missing id' });
     }
 
-    const candidate = id.toString();
-    const hexId = candidate.startsWith('npub') ? npubToHex(candidate) || '' : candidate;
+    const hexId = normalizePubkey(String(id||''));
     if (!hexId) {
       return res.status(400).json({ success: false, data: null, error: 'invalid id' });
     }
@@ -34,6 +38,7 @@ module.exports = async function handler(req, res) {
       created_at: Number(r.created_at) || 0,
       indexed_at: Number(r.indexed_at) || 0
     }));
+    res.setHeader('Cache-Control', 'public, max-age=60, stale-while-revalidate=60');
     res.status(200).json({ success: true, data: list, error: null });
   } catch (e) {
     res.status(500).json({ success: false, data: null, error: e?.message || 'error' });
