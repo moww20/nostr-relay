@@ -4,11 +4,11 @@ A production-ready Nostr indexer that periodically ingests profiles and contact 
 
 ## Highlights
 
-- Serverless by default: clean Vercel Functions under `/api/*`
-- Periodic indexing: Vercel Cron safely ingests recent profile (kind 0) and contacts (kind 3)
+- Serverless by default: single function handler under `/api/data.js`
+- Periodic indexing via scripts (optional)
 - Turso-backed: libSQL-compatible, token-auth, serverless SQLite
-- Simple REST API: health, profile search, follower/following, user stats, indexer stats
-- Local-friendly: CLI indexers, optional local SQLite + Express API and search demo
+- Simple REST API: health, trending, discovery, search (profiles/events), followers/following, user stats, indexer stats
+- Local-friendly: CLI indexers and optional local Express API
 
 ## Architecture
 
@@ -105,39 +105,37 @@ Optional (local dev):
 
 - `LOCAL_DB_PATH`: path for local SQLite file (defaults to `db/../nostr_indexer.db`)
 
-## API Reference (Vercel)
+## API Reference (Production)
 
-Base URL: your Vercel deployment
+Base URL: your deployment domain (or local dev)
 
 - Health
   - `GET /api/health` → `{ success: true, data: "OK" }`
-  - If Turso env vars are present, a quick `SELECT 1` is executed; otherwise returns OK.
-
-- Indexer Stats
-  - `GET /api/indexer-stats`
-  - Response: `{ success, data: { total_profiles, total_relationships, search_index_size, relays_indexed, last_indexed }, error }`
-
+- Trending (24h)
+  - `GET /api/trending?limit=50&cursor=<base64>`
+- Discovery
+  - `GET /api/discovery?limit=50&cursor=<base64>`
+- Engagement (batch)
+  - `GET /api/engagement?ids=<id1,id2,...>`
+- Search events (FTS)
+  - `GET /api/search/events?q=<fts query>&since=<unix>&until=<unix>&limit=50`
+- Thread by event id
+  - `GET /api/thread/<eventId>`
+- Events (batch fetch by ids)
+  - `GET /api/events/bulk?ids=<id1,id2,...>` or `?id=<id>&id=<id2>`
 - Search profiles
   - `GET /api/search?q=<query>&page=<n>&per_page=<m>`
-  - Query is tokenized; terms shorter than 3 chars are ignored
-  - `per_page` is clamped to 1..100 (default 20)
-  - Response: `{ success, data: { profiles: [...], total_count, page, per_page }, error }`
-  - Each profile includes: `pubkey, name, display_name, about, picture, banner, website, lud16, nip05, created_at, indexed_at`
-
-- Profile by id
+- Profile by id (npub or hex)
   - `GET /api/profile/<pubkey-or-npub>`
-  - Accepts hex pubkey or `npub` string
-  - Response: `{ success, data: { ...profileFields }, error }`
-
-- Relationships (hex pubkey required)
-  - `GET /api/following/<pubkey>?limit=100` → ordered by `created_at` desc
-  - `GET /api/followers/<pubkey>?limit=100` → ordered by `created_at` desc
-  - Response: `{ success, data: [ { follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at }... ], error }`
-  - Note: these endpoints expect a hex pubkey id
-
-- User Stats
-  - `GET /api/stats/<pubkey>` → `{ success, data: { following_count, followers_count, last_contact_update }, error }`
-  - `last_contact_update` may be null
+- Profiles bulk
+  - `GET /api/profile/bulk?ids=<hex1,hex2,...>`
+- Following / Followers (hex or npub)
+  - `GET /api/following/<id>?limit=100`
+  - `GET /api/followers/<id>?limit=100`
+- User stats
+  - `GET /api/stats/<id>`
+- Indexer stats
+  - `GET /api/indexer-stats`
 
 ### Example requests
 
@@ -193,52 +191,31 @@ npm install
 ### 2) Configure environment
 
 ```bash
+# Turso (required)
 export TURSO_DATABASE_URL=libsql://<db-name>-<org>.turso.io
 export TURSO_AUTH_TOKEN=<token>
-# Optional
-export INDEXER_RELAYS=wss://relay.damus.io,wss://nos.lol
 ```
 
-### 3) Initialize Turso schema (idempotent)
+### 3) Initialize Turso schema
 
 ```bash
 npm run db:migrate
-# or
-node db/migrate.js
 ```
 
-### 4) Backfill data into Turso (from your machine)
-
-Use the Turso-backed backfill (writes directly to Turso via HTTP):
+### 4) Backfill/index (optional)
 
 ```bash
-# General run (profiles + contacts)
-npm run index:backfill:turso -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-604800))
+# Full backfill to Turso (profiles+contacts+posts)
+npm run index:backfill:turso
 
-# Profiles only
-npm run index:profiles -- --limit=50000 --perRelay=2500 --since=$(($(date +%s)-2592000))
-
-# Contacts only
-npm run index:contacts -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-1209600))
+# Compute and push trending/discovery snapshots
+node scripts/indexer-push-all.js --verbose
 ```
 
-Options:
+### 5) Run locally (serverless emulation)
 
-- `--relays=<comma-separated>` override relay list
-- `--since=<unix-seconds>` earliest event time (default: 0)
-- `--limit=<n>` total events target (best-effort)
-- `--perRelay=<n>` cap per relay
-- `--only=profiles|contacts` restrict kinds
-- `--runtimeMs=<ms>` per-relay socket budget (default 300000)
-
-You can loop runs to reach higher totals:
-
-```bash
-for i in $(seq 1 20); do
-  npm run index:profiles -- --limit=20000 --perRelay=2000 --since=$(($(date +%s)-2592000))
-  sleep 3
-done
-```
+- Vercel: `vercel dev` (routes `/api/*` to `api/data.js`)
+- Or use the local Express API for SQLite only: `npm run dev:api`
 
 Verify:
 
@@ -284,17 +261,12 @@ Vercel settings (see `vercel.json`):
 
 ## Scripts (package.json)
 
-- `npm run db:migrate` → initialize Turso schema (idempotent)
+- `npm run db:migrate` → initialize Turso schema
 - `npm run db:stats` → show Turso stats
 - `npm run db:health` → DB connectivity check
-- `npm run db:reset` → drop Turso tables (dangerous)
-- `npm run index:backfill:turso` → backfill to Turso from relays
-- `npm run index:profiles` / `index:contacts` → scoped backfill to Turso
-- `npm run index:backfill:sqlite` → backfill to local SQLite
-- `npm run index:enhanced:sqlite` → local enhanced indexer (SQLite + extra metadata)
-- `npm run migrate:enhanced` → upgrade local SQLite to enhanced schema
-- `npm run api` → start local Express API against local SQLite
-- `npm run test:enhanced` → local enhanced-functionality smoke tests
+- `npm run index:backfill:turso` → backfill to Turso from relays (profiles+contacts+posts)
+- `npm run indexer:push:all` → compute and push snapshots (alias for `node scripts/indexer-push-all.js`)
+- `npm run dev:api` → start local Express API against SQLite (optional)
 
 ## Project Structure
 
@@ -363,138 +335,7 @@ package.json
 
 MIT © Contributors
 
-## Public API (Production) and Client Integration Guide
+## Notes
 
-Base URL (production): https://indexer.twatter.army/
-
-Response envelope (all endpoints): `{ success, data, error }`
-
-### Endpoints
-
-- Health
-  - `GET /api/health`
-  - Liveness and DB reachability
-  - Example:
-```bash
-curl -sS https://indexer.twatter.army/api/health
-```
-
-- Indexer stats
-  - `GET /api/indexer-stats`
-  - Totals and last indexer run metadata
-  - Example:
-```bash
-curl -sS https://indexer.twatter.army/api/indexer-stats
-```
-
-- Search profiles
-  - `GET /api/search?q=<query>&page=<n>&per_page=<m>`
-  - Tokenizes q (terms length > 2), `page` is 0-based, `per_page` clamped to ≤100
-  - Example:
-```bash
-curl -sS "https://indexer.twatter.army/api/search?q=jack&page=0&per_page=20"
-```
-
-- Profile by id (npub or hex)
-  - `GET /api/profile/<pubkey-or-npub>`
-  - Example:
-```bash
-curl -sS https://indexer.twatter.army/api/profile/npub1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-- Following (npub or hex)
-  - `GET /api/following/<pubkey-or-npub>?limit=100`
-  - Example:
-```bash
-curl -sS "https://indexer.twatter.army/api/following/npub1xxxxxxxx...?limit=50"
-```
-
-- Followers (npub or hex)
-  - `GET /api/followers/<pubkey-or-npub>?limit=100`
-  - Example:
-```bash
-curl -sS "https://indexer.twatter.army/api/followers/npub1xxxxxxxx...?limit=50"
-```
-
-- User stats (npub or hex)
-  - `GET /api/stats/<pubkey-or-npub>`
-  - Example:
-```bash
-curl -sS https://indexer.twatter.army/api/stats/npub1xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
-
-- Cron indexer (ops)
-  - `GET /api/indexer-cron`
-  - Optional overrides: `since, limit, per_relay, relays, subs_limit, only=profiles|contacts, runtime_ms`
-  - For scheduled operation primarily; not needed by end-user clients
-
-### What each endpoint returns
-
-- `/api/health`: `{ success: true, data: "OK" }`
-- `/api/indexer-stats`: `{ total_profiles, total_relationships, search_index_size, relays_indexed, last_indexed }`
-- `/api/search`: `{ profiles: [...], total_count, page, per_page }`
-- `/api/profile/<id>`: a single profile document (pubkey, name, display_name, about, picture, banner, website, lud16, nip05, created_at, indexed_at)
-- `/api/following/<id>`, `/api/followers/<id>`: arrays of `{ follower_pubkey, following_pubkey, relay, petname, created_at, indexed_at }`
-- `/api/stats/<id>`: `{ pubkey, following_count, followers_count, last_contact_update }`
-
-### Client usage patterns (NOSTR apps)
-
-- Search UX
-  - Debounce text input and call `/api/search?q=...&page=0&per_page=20`
-  - Render name/display_name/avatar (`picture`), show `about` snippet
-  - Paginate via `page` increments
-  - Optional: open a short-lived relay subscription to live-refresh
-
-- Profile view
-  - Fetch `/api/profile/<npub|hex>` to render profile card
-  - Fetch `/api/stats/<npub|hex>` for counts
-  - Lazy-load `/api/followers` and `/api/following` tabs (`limit=20..50`)
-
-- People graph
-  - Use `/api/followers` and `/api/following` to populate lists
-  - Fetch `/api/profile/<pubkey>` on-demand for avatar/name when rendering list items
-
-- Caching & freshness
-  - Profiles: cache minutes to hours
-  - Relationships: short TTL (30–120s) with revalidation
-  - Show “Last updated” using `/api/indexer-stats.last_indexed`
-
-- IDs
-  - Endpoints accept `npub` or 64-hex pubkeys
-  - Normalize to hex in client state if needed
-
-### Quick code snippets
-
-- Fetch profile + stats
-```js
-const base = 'https://indexer.twatter.army';
-async function getProfile(id) {
-  const r = await fetch(`${base}/api/profile/${id}`);
-  const j = await r.json();
-  if (!j.success) throw new Error(j.error || 'profile failed');
-  return j.data;
-}
-async function getStats(id) {
-  const r = await fetch(`${base}/api/stats/${id}`);
-  const j = await r.json();
-  if (!j.success) throw new Error(j.error || 'stats failed');
-  return j.data;
-}
-```
-
-- Search
-```js
-async function searchProfiles(q, page = 0, perPage = 20) {
-  const base = 'https://indexer.twatter.army';
-  const r = await fetch(`${base}/api/search?q=${encodeURIComponent(q)}&page=${page}&per_page=${perPage}`);
-  const j = await r.json();
-  if (!j.success) throw new Error(j.error || 'search failed');
-  return j.data;
-}
-```
-
-### Hobby/Free plan notes
-
-- Indexer runs on a schedule in short bursts; data is near-real-time but not streaming
-- Use client-side caching and small page sizes for responsiveness
-- Rely on `/api/indexer-stats` for visibility and manual checks
+- The `external/` directory (Next.js app) has been removed.
+- All APIs are served via a single serverless handler `api/data.js` with broad CORS enabled by default. Set `ALLOWED_ORIGINS` to restrict.

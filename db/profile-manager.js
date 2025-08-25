@@ -1,4 +1,4 @@
-const { hexToNpub, npubToHex } = require('./utils');
+const { hexToNpub, npubToHex, validateProfile } = require('./utils');
 
 /**
  * Profile manager for Turso DB operations
@@ -15,8 +15,10 @@ class ProfileManager {
     const client = this.dbManager.getClient();
 
     try {
-      const npub = hexToNpub(profile.pubkey);
-      const searchVector = this.buildSearchVector(profile);
+      // Validate and sanitize incoming profile to avoid oversized payloads / bad data
+      const cleaned = validateProfile(profile);
+      const npub = hexToNpub(cleaned.pubkey);
+      const searchVector = this.buildSearchVector(cleaned);
       const indexedAt = Math.floor(Date.now() / 1000);
 
       await client.execute({
@@ -27,24 +29,24 @@ class ProfileManager {
           ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         `,
         args: [
-          profile.pubkey,
+          cleaned.pubkey,
           npub,
-          profile.name || null,
-          profile.display_name || null,
-          profile.about || null,
-          profile.picture || null,
-          profile.banner || null,
-          profile.website || null,
-          profile.lud16 || null,
-          profile.nip05 || null,
-          profile.created_at || indexedAt,
+          cleaned.name || null,
+          cleaned.display_name || null,
+          cleaned.about || null,
+          cleaned.picture || null,
+          cleaned.banner || null,
+          cleaned.website || null,
+          cleaned.lud16 || null,
+          cleaned.nip05 || null,
+          cleaned.created_at || indexedAt,
           indexedAt,
           searchVector
         ]
       });
 
       // Update search index
-      await this.updateSearchIndex(profile.pubkey, this.extractSearchTerms(profile));
+      await this.updateSearchIndex(cleaned.pubkey, this.extractSearchTerms(cleaned));
 
       return true;
     } catch (error) {

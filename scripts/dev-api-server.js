@@ -158,6 +158,9 @@ app.get('/api/stats', async (req, res) => {
   }
 });
 
+// Ops: Start indexing to Turso (profiles+contacts+posts)
+// (Removed ops endpoints)
+
 // Search by specific field (for advanced search)
 app.get('/api/search/field', async (req, res) => {
   try {

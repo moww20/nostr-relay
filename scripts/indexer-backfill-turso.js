@@ -4,7 +4,8 @@ require('dotenv').config();
 const WebSocket = require('ws');
 const { dbManager } = require('../db');
 
-const DEFAULT_RELAYS = [
+// Fixed top 10 relays (always used by default)
+const TOP_TEN_RELAYS = [
   'wss://relay.damus.io',
   'wss://nos.lol',
   'wss://relay.snort.social',
@@ -13,14 +14,8 @@ const DEFAULT_RELAYS = [
   'wss://relay.primal.net',
   'wss://relay.nostr.band',
   'wss://purplepag.es',
-  'wss://relay.nostr.wine',
-  'wss://relay.nostr.band',
   'wss://relay.nostr.info',
-  'wss://relay.nostr.com',
-  'wss://relay.nostr.net',
-  'wss://relay.nostr.org',
-  'wss://relay.nostr.dev',
-  'wss://relay.nostr.io'
+  'wss://relay.nostr.dev'
 ];
 
 function showHelp() {
@@ -41,16 +36,18 @@ function parseArgs() {
   return opts;
 }
 
-function reqMessage(subId, kinds, since, limit) {
-  return JSON.stringify(['REQ', subId, { kinds, since, limit }]);
+function reqMessage(subId, kinds, since) {
+  const filter = { kinds };
+  if (typeof since === 'number') filter.since = since;
+  return JSON.stringify(['REQ', subId, filter]);
 }
 
-async function indexRelay(url, sinceTs, perRelayLimit, only, onEvent, runtimeMs) {
+async function indexRelay(url, sinceTs, only, onEvent) {
   return new Promise((resolve) => {
     const ws = new WebSocket(url, { handshakeTimeout: 8000 });
     let events = 0;
     let closed = false;
-    const start = Date.now();
+    const pendingSubs = new Set();
 
     const cleanup = () => {
       if (closed) return;
@@ -61,18 +58,23 @@ async function indexRelay(url, sinceTs, perRelayLimit, only, onEvent, runtimeMs)
       resolve(events);
     };
 
-    const stopIfNeeded = () => {
-      // Only stop if we've been running for too long, don't limit by event count
-      if (Date.now() - start > runtimeMs) cleanup();
-    };
-
     ws.on('open', () => {
       try {
+        const since = typeof sinceTs === 'number' ? sinceTs : 0;
         if (!only || only === 'profiles') {
-          ws.send(reqMessage('profiles', [0], sinceTs, perRelayLimit));
+          const sid = 'profiles';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [0], since));
         }
         if (!only || only === 'contacts') {
-          ws.send(reqMessage('contacts', [3], sinceTs, perRelayLimit));
+          const sid = 'contacts';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [3], since));
+        }
+        if (!only || only === 'notes' || only === 'posts') {
+          const sid = 'notes';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [1], since));
         }
       } catch {
         cleanup();
@@ -87,17 +89,16 @@ async function indexRelay(url, sinceTs, perRelayLimit, only, onEvent, runtimeMs)
         if (typ === 'EVENT' && msg.length >= 3) {
           await onEvent(msg[2], url);
           events += 1;
-          stopIfNeeded();
         } else if (typ === 'EOSE') {
-          cleanup();
+          const sid = msg[1];
+          if (sid && pendingSubs.has(sid)) pendingSubs.delete(sid);
+          if (pendingSubs.size === 0) cleanup();
         }
       } catch {}
     });
 
     ws.on('error', () => cleanup());
     ws.on('close', () => cleanup());
-
-    setTimeout(cleanup, runtimeMs + 2000);
   });
 }
 
@@ -140,6 +141,24 @@ async function onEventFactory() {
           }
         }
       } catch {}
+    } else if (event.kind === 1) {
+      try {
+        const client = dbManager.getClient();
+        const tagsJson = JSON.stringify(Array.isArray(event.tags) ? event.tags : []);
+        await client.execute({
+          sql: `INSERT OR REPLACE INTO events(id, kind, pubkey, created_at, content, tags_json, deleted)
+                VALUES (?1,?2,?3,?4,?5,?6,?7)`,
+          args: [
+            event.id,
+            Number(event.kind || 1),
+            String(event.pubkey || ''),
+            Number(event.created_at || 0),
+            String(event.content || ''),
+            tagsJson,
+            0
+          ]
+        });
+      } catch {}
     }
   };
 }
@@ -150,11 +169,10 @@ async function onEventFactory() {
     showHelp();
     process.exit(0);
   }
-  const relays = (opts.relays || process.env.INDEXER_RELAYS || DEFAULT_RELAYS.join(',')).split(',').map(s => s.trim()).filter(Boolean);
+  // Always use the fixed top 10 relays by default
+  const relays = TOP_TEN_RELAYS.slice();
   const since = Number(opts.since || opts.sinceSeconds || 0);
-  const perRelay = Number(opts.perRelay || opts.perRelayLimit || 100000);
   const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
-  const runtimeMs = Number(opts.runtimeMs || opts.runtimeMsPerRelay || 300000);
 
   if (!process.env.TURSO_DATABASE_URL) {
     console.error('Missing TURSO_DATABASE_URL');
@@ -164,7 +182,7 @@ async function onEventFactory() {
   const onEvent = await onEventFactory();
   let total = 0;
   for (const url of relays) {
-    const count = await indexRelay(url, since, perRelay, only, onEvent, runtimeMs);
+    const count = await indexRelay(url, since, only, onEvent);
     total += count;
     console.log(`Indexed ${count} from ${url} (total=${total})`);
   }

@@ -196,35 +196,35 @@ function validateProfile(profile) {
   cleaned.pubkey = normalizePubkey(profile.pubkey);
 
   // Optional fields with validation
-  if (profile.name) {
+  if (typeof profile.name === 'string') {
     cleaned.name = sanitizeSqlInput(profile.name).slice(0, 100);
   }
 
-  if (profile.display_name) {
+  if (typeof profile.display_name === 'string') {
     cleaned.display_name = sanitizeSqlInput(profile.display_name).slice(0, 100);
   }
 
-  if (profile.about) {
+  if (typeof profile.about === 'string') {
     cleaned.about = sanitizeSqlInput(profile.about).slice(0, 500);
   }
 
-  if (profile.picture) {
+  if (typeof profile.picture === 'string') {
     cleaned.picture = sanitizeSqlInput(profile.picture).slice(0, 500);
   }
 
-  if (profile.banner) {
+  if (typeof profile.banner === 'string') {
     cleaned.banner = sanitizeSqlInput(profile.banner).slice(0, 500);
   }
 
-  if (profile.website) {
+  if (typeof profile.website === 'string') {
     cleaned.website = sanitizeSqlInput(profile.website).slice(0, 200);
   }
 
-  if (profile.lud16) {
+  if (typeof profile.lud16 === 'string') {
     cleaned.lud16 = sanitizeSqlInput(profile.lud16).slice(0, 100);
   }
 
-  if (profile.nip05) {
+  if (typeof profile.nip05 === 'string') {
     cleaned.nip05 = sanitizeSqlInput(profile.nip05).slice(0, 100);
   }
 

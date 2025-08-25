@@ -24,6 +24,7 @@ async function runMigrations() {
     console.log('\n📈 Database Statistics:');
     console.log(`  - Total profiles: ${stats.total_profiles}`);
     console.log(`  - Total relationships: ${stats.total_relationships}`);
+    console.log(`  - Total posts: ${stats.total_posts}`);
     console.log(`  - Search index size: ${stats.search_index_size}`);
   } catch (error) {
     console.error('❌ Migration failed:', error.message);
@@ -70,6 +71,7 @@ async function showStats() {
     const stats = await dbManager.getStats();
     console.log(`  - Total profiles: ${stats.total_profiles}`);
     console.log(`  - Total relationships: ${stats.total_relationships}`);
+    console.log(`  - Total posts: ${stats.total_posts}`);
     console.log(`  - Search index size: ${stats.search_index_size}`);
     console.log(`  - Last updated: ${stats.last_updated}`);
 

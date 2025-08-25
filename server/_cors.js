@@ -1,7 +1,4 @@
-const DEFAULT_ALLOWED_ORIGINS = [
-  'https://twatter.army',
-  'https://www.twatter.army'
-];
+const DEFAULT_ALLOWED_ORIGINS = ['*'];
 
 function resolveAllowedOrigins() {
   const fromEnv = (process.env.ALLOWED_ORIGINS || '').split(',').map((s) => s.trim()).filter(Boolean);
@@ -23,10 +20,8 @@ function setCorsHeaders(res, origin) {
  */
 function applyCors(req, res) {
   const origins = resolveAllowedOrigins();
-  const reqOrigin = (req.headers && (req.headers.origin || req.headers.Origin)) || '';
-
-  // If no Origin header (e.g., curl/server), treat as not allowed by default
-  const allowed = reqOrigin && origins.includes(reqOrigin);
+  const reqOrigin = (req.headers && (req.headers.origin || req.headers.Origin)) || '*';
+  const allowed = origins.includes('*') || (reqOrigin && origins.includes(reqOrigin));
 
   if (req.method === 'OPTIONS') {
     if (allowed) {

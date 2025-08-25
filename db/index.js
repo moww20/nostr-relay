@@ -96,8 +96,10 @@ class DatabaseManager {
       sql: 'SELECT COUNT(*) AS c FROM search_index',
       args: []
     });
+    const posts = await c.execute({ sql: 'SELECT COUNT(*) AS c FROM events WHERE kind = 1', args: [] });
 
     return {
+      total_posts: (posts.rows[0] && Number(posts.rows[0].c)) || 0,
       total_profiles: (profiles.rows[0] && Number(profiles.rows[0].c)) || 0,
       total_relationships: (relationships.rows[0] && Number(relationships.rows[0].c)) || 0,
       search_index_size: (searchIndex.rows[0] && Number(searchIndex.rows[0].c)) || 0,
