@@ -3,7 +3,5 @@
   "routes": [
     { "src": "/api/.*", "dest": "/api/data.js" }
   ],
-  "functions": {},
-  "crons": [],
   "regions": ["iad1"]
 }
