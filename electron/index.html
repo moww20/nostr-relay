@@ -5,7 +5,7 @@
   <title>Nostr Indexer Control</title>
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline' 'self'">
   <style>
-    body { font-family: system-ui, sans-serif; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; height: 100vh; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto 1fr; height: 100vh; }
     header { grid-column: 1 / span 2; padding: 12px; background: #111; color: #fff; display: flex; justify-content: space-between; align-items: center; }
     .panel { padding: 12px; overflow: auto; }
     .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
@@ -15,6 +15,9 @@
     .btn-row { margin: 8px 0; }
     .log { background: #0a0a0a; color: #d0ffd0; font-family: ui-monospace, Menlo, Consolas, monospace; padding: 8px; height: calc(100% - 16px); overflow: auto; white-space: pre-wrap; }
     .status { font-size: 12px; color: #888; }
+    .row2 { grid-column: 1 / span 2; display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .term { background: #000; color: #0f0; font-family: ui-monospace, Menlo, Consolas, monospace; height: 300px; padding: 8px; overflow: auto; white-space: pre-wrap; }
+    .term-controls { margin: 8px 0; }
   </style>
 </head>
 <body>
@@ -62,11 +65,32 @@
     <div id="log" class="log"></div>
   </section>
 
+  <section class="panel row2">
+    <div style="padding:12px;">
+      <h3>Terminal</h3>
+      <div class="term-controls">
+        <button id="termStart">Start Terminal</button>
+        <button id="termStop">Stop Terminal</button>
+      </div>
+      <div id="term" class="term"></div>
+      <div style="display:flex; gap:8px; margin-top:6px;">
+        <input id="termInput" placeholder="Type a command and press Enter (e.g., npm -v)" />
+        <button id="termSend">Send</button>
+      </div>
+    </div>
+    <div></div>
+  </section>
+
   <script>
     const els = {
       status: document.getElementById('status'),
       log: document.getElementById('log'),
-      saveEnv: document.getElementById('saveEnv')
+      saveEnv: document.getElementById('saveEnv'),
+      term: document.getElementById('term'),
+      termStart: document.getElementById('termStart'),
+      termStop: document.getElementById('termStop'),
+      termInput: document.getElementById('termInput'),
+      termSend: document.getElementById('termSend')
     };
 
     const envIds = ['TURSO_DATABASE_URL','TURSO_AUTH_TOKEN','INDEXER_RELAYS','WINDOW_END'];
@@ -88,6 +112,14 @@
       els.log.scrollTop = els.log.scrollHeight;
     }
 
+    function appendTerm(text, stream) {
+      const span = document.createElement('span');
+      span.textContent = text;
+      span.style.color = stream === 'stderr' ? '#f88' : '#0f0';
+      els.term.appendChild(span);
+      els.term.scrollTop = els.term.scrollHeight;
+    }
+
     window.api.loadEnv().then(env => writeEnvToForm(env||{}));
 
     els.saveEnv.addEventListener('click', async () => {
@@ -107,13 +139,37 @@
       });
     }
 
-    window.api.onStart((m) => {
-      appendLog(`[started pid=${m.pid}] ${m.npmScript}\n`, 'stdout');
-    });
+    window.api.onStart((m) => { appendLog(`[started pid=${m.pid}] ${m.npmScript}\n`, 'stdout'); });
     window.api.onLog((m) => appendLog(m.text, m.stream));
-    window.api.onExit((m) => {
-      appendLog(`\n[exit code=${m.code} signal=${m.signal||''}]\n`, 'stdout');
+    window.api.onExit((m) => { appendLog(`\n[exit code=${m.code} signal=${m.signal||''}]\n`, 'stdout'); });
+
+    // Terminal wiring
+    els.termStart.addEventListener('click', async () => {
+      els.term.textContent = '';
+      await window.api.termStart();
+      appendTerm('[terminal started]\n', 'stdout');
     });
+    els.termStop.addEventListener('click', async () => {
+      await window.api.termStop();
+      appendTerm('\n[terminal stopped]\n', 'stdout');
+    });
+    els.termSend.addEventListener('click', async () => {
+      const text = els.termInput.value + (process.platform === 'win32' ? '\r\n' : '\n');
+      els.termInput.value = '';
+      await window.api.termInput(text);
+    });
+    els.termInput.addEventListener('keydown', async (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        const text = els.termInput.value + (process.platform === 'win32' ? '\r\n' : '\n');
+        els.termInput.value = '';
+        await window.api.termInput(text);
+      }
+    });
+
+    window.api.onTermStart((_m) => {});
+    window.api.onTermData((m) => appendTerm(m.data, m.type));
+    window.api.onTermExit((m) => appendTerm(`\n[exit code=${m.code} signal=${m.signal||''}]\n`, 'stdout'));
   </script>
 </body>
 </html>

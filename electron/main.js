@@ -6,6 +6,7 @@ const { spawn } = require('child_process');
 const CONFIG_FILE = 'env.json';
 let mainWindow;
 const running = new Map();
+let termProc = null;
 
 function getConfigPath() {
   const dir = app.getPath('userData');
@@ -107,6 +108,42 @@ app.whenReady().then(() => {
       return { stopped: true };
     }
     return { stopped: false };
+  });
+
+  // Simple terminal (non-PTY) using system shell
+  ipcMain.handle('term:start', () => {
+    if (termProc) return { ok: true, already: true };
+    const isWin = process.platform === 'win32';
+    const shell = isWin ? (process.env.ComSpec || 'cmd.exe') : (process.env.SHELL || '/bin/bash');
+    const args = isWin ? ['/Q'] : ['-l'];
+    const child = spawn(shell, args, { cwd: path.resolve(__dirname, '..'), env: process.env, stdio: ['pipe', 'pipe', 'pipe'] });
+    termProc = child;
+    const send = (type, data) => emitToRenderer('term:data', { type, data: data.toString() });
+    child.stdout.on('data', (d) => send('stdout', d));
+    child.stderr.on('data', (d) => send('stderr', d));
+    child.on('exit', (code, signal) => {
+      emitToRenderer('term:exit', { code, signal });
+      termProc = null;
+    });
+    emitToRenderer('term:start', { shell, args });
+    return { ok: true };
+  });
+
+  ipcMain.handle('term:input', (_e, text) => {
+    if (!termProc) return { ok: false };
+    try {
+      termProc.stdin.write(String(text || ''));
+      return { ok: true };
+    } catch {
+      return { ok: false };
+    }
+  });
+
+  ipcMain.handle('term:stop', () => {
+    if (!termProc) return { stopped: false };
+    try { termProc.kill('SIGTERM'); } catch {}
+    termProc = null;
+    return { stopped: true };
   });
 
   app.on('activate', () => {
