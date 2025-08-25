@@ -1,0 +1,119 @@
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Nostr Indexer Control</title>
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'unsafe-inline' 'self'">
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 0; display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto 1fr; height: 100vh; }
+    header { grid-column: 1 / span 2; padding: 12px; background: #111; color: #fff; display: flex; justify-content: space-between; align-items: center; }
+    .panel { padding: 12px; overflow: auto; }
+    .env-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    label { font-size: 12px; color: #444; }
+    input { width: 100%; padding: 6px 8px; }
+    button { padding: 8px 12px; margin-right: 8px; }
+    .btn-row { margin: 8px 0; }
+    .log { background: #0a0a0a; color: #d0ffd0; font-family: ui-monospace, Menlo, Consolas, monospace; padding: 8px; height: calc(100% - 16px); overflow: auto; white-space: pre-wrap; }
+    .status { font-size: 12px; color: #888; }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <strong>Nostr Indexer Control</strong>
+      <span class="status" id="status"></span>
+    </div>
+    <div>
+      <button id="saveEnv">Save Env</button>
+    </div>
+  </header>
+
+  <section class="panel">
+    <h3>Environment</h3>
+    <div class="env-grid">
+      <div>
+        <label>TURSO_DATABASE_URL</label>
+        <input id="TURSO_DATABASE_URL" placeholder="libsql://..." />
+      </div>
+      <div>
+        <label>TURSO_AUTH_TOKEN</label>
+        <input id="TURSO_AUTH_TOKEN" placeholder="token" />
+      </div>
+      <div>
+        <label>INDEXER_RELAYS (comma separated)</label>
+        <input id="INDEXER_RELAYS" placeholder="wss://relay.damus.io,..." />
+      </div>
+      <div>
+        <label>WINDOW_END (unix seconds, optional)</label>
+        <input id="WINDOW_END" placeholder="" />
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button data-script="index:enhanced:sqlite">Run Enhanced SQLite Indexer</button>
+      <button data-script="index:backfill:turso">Backfill Turso</button>
+      <button data-script="indexer:push:all">Push Trending/Discovery</button>
+      <button data-script="dev:api">Run Dev API</button>
+    </div>
+  </section>
+
+  <section class="panel">
+    <h3>Logs</h3>
+    <div id="log" class="log"></div>
+  </section>
+
+  <script>
+    const els = {
+      status: document.getElementById('status'),
+      log: document.getElementById('log'),
+      saveEnv: document.getElementById('saveEnv')
+    };
+
+    const envIds = ['TURSO_DATABASE_URL','TURSO_AUTH_TOKEN','INDEXER_RELAYS','WINDOW_END'];
+
+    function readEnvFromForm() {
+      const obj = {};
+      for (const id of envIds) obj[id] = document.getElementById(id).value;
+      return obj;
+    }
+    function writeEnvToForm(env) {
+      for (const id of envIds) if (env[id] !== undefined) document.getElementById(id).value = String(env[id]||'');
+    }
+
+    function appendLog(text, stream) {
+      const line = document.createElement('div');
+      line.textContent = text;
+      if (stream === 'stderr') line.style.color = '#ffb3b3';
+      els.log.appendChild(line);
+      els.log.scrollTop = els.log.scrollHeight;
+    }
+
+    window.api.loadEnv().then(env => writeEnvToForm(env||{}));
+
+    els.saveEnv.addEventListener('click', async () => {
+      const env = readEnvFromForm();
+      const res = await window.api.saveEnv(env);
+      els.status.textContent = res.success ? '  Saved ✓' : '  Save failed';
+      setTimeout(() => els.status.textContent = '', 1500);
+    });
+
+    for (const btn of document.querySelectorAll('button[data-script]')) {
+      btn.addEventListener('click', async () => {
+        const env = readEnvFromForm();
+        const script = btn.getAttribute('data-script');
+        els.log.textContent = '';
+        const { runId } = await window.api.run(script, [], env);
+        appendLog(`[start ${script}] runId=${runId}\n`, 'stdout');
+      });
+    }
+
+    window.api.onStart((m) => {
+      appendLog(`[started pid=${m.pid}] ${m.npmScript}\n`, 'stdout');
+    });
+    window.api.onLog((m) => appendLog(m.text, m.stream));
+    window.api.onExit((m) => {
+      appendLog(`\n[exit code=${m.code} signal=${m.signal||''}]\n`, 'stdout');
+    });
+  </script>
+</body>
+</html>

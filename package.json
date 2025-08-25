@@ -25,7 +25,8 @@
     "indexer:push:trending": "node scripts/indexer-push-trending.js",
     "indexer:push:all": "node scripts/indexer-push-all.js",
     "lint": "eslint . --max-warnings=0",
-    "format": "prettier --write \"**/*.{js,json,md}\""
+    "format": "prettier --write \"**/*.{js,json,md}\"",
+    "electron": "electron ./electron/main.js"
   },
   "dependencies": {
     "@libsql/client": "latest",
@@ -40,7 +41,8 @@
     "eslint": "^9.34.0",
     "eslint-config-prettier": "^9.1.2",
     "eslint-plugin-prettier": "^5.5.4",
-    "prettier": "^3.6.2"
+    "prettier": "^3.6.2",
+    "electron": "^31.2.0"
   },
   "engines": {
     "node": ">=18.0.0"
