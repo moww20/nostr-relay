@@ -76,6 +76,24 @@ async function indexRelay(url, sinceTs, only, onEvent) {
           pendingSubs.add(sid);
           ws.send(reqMessage(sid, [1], since));
         }
+        // New: reposts (kind 6)
+        if (!only || only === 'reposts') {
+          const sid = 'reposts';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [6], since));
+        }
+        // New: reactions (kind 7)
+        if (!only || only === 'reactions' || only === 'likes') {
+          const sid = 'reactions';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [7], since));
+        }
+        // New: zaps (kind 9735)
+        if (!only || only === 'zaps') {
+          const sid = 'zaps';
+          pendingSubs.add(sid);
+          ws.send(reqMessage(sid, [9735], since));
+        }
       } catch {
         cleanup();
       }
@@ -159,6 +177,25 @@ async function onEventFactory() {
           ]
         });
       } catch {}
+    } else if (event.kind === 6 || event.kind === 7 || event.kind === 9735) {
+      // New: store reposts (6), reactions (7), and zaps (9735)
+      try {
+        const client = dbManager.getClient();
+        const tagsJson = JSON.stringify(Array.isArray(event.tags) ? event.tags : []);
+        await client.execute({
+          sql: `INSERT OR REPLACE INTO events(id, kind, pubkey, created_at, content, tags_json, deleted)
+                VALUES (?1,?2,?3,?4,?5,?6,?7)`,
+          args: [
+            event.id,
+            Number(event.kind || 0),
+            String(event.pubkey || ''),
+            Number(event.created_at || 0),
+            String(event.content || ''),
+            tagsJson,
+            0
+          ]
+        });
+      } catch {}
     }
   };
 }
@@ -172,7 +209,10 @@ async function onEventFactory() {
   // Always use the fixed top 10 relays by default
   const relays = TOP_TEN_RELAYS.slice();
   const since = Number(opts.since || opts.sinceSeconds || 0);
-  const only = opts.only === 'profiles' || opts.only === 'contacts' ? opts.only : null;
+  const only = (function(x){
+    const v = String(x||'').toLowerCase();
+    return ['profiles','contacts','notes','posts','reposts','reactions','likes','zaps'].includes(v) ? v : null;
+  })(opts.only);
 
   if (!process.env.TURSO_DATABASE_URL) {
     console.error('Missing TURSO_DATABASE_URL');
